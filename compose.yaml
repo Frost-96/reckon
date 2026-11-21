@@ -1,0 +1,75 @@
+name: reckon
+
+x-app: &app
+  image: reckon-app:dev
+  build: .
+  init: true
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+
+x-app-healthcheck: &app-healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 5
+  start_period: 10s
+
+services:
+  postgres:
+    image: postgres:18.7-trixie@sha256:eb63372c1e05c755f55fa30cbd07aecc443676fc6c0fa90b9002d01537841e1a
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      EXECUTION_DB_PASSWORD: ${EXECUTION_DB_PASSWORD:-execution}
+      BUSINESS_DB_PASSWORD: ${BUSINESS_DB_PASSWORD:-business}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "--host", "127.0.0.1", "--username", "postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
+
+  api:
+    <<: *app
+    profiles: [dev]
+    command: ["node", "apps/api/src/main.ts"]
+    environment:
+      PORT: "3000"
+      EXECUTION_DATABASE_URL: postgres://execution:${EXECUTION_DB_PASSWORD:-execution}@postgres:5432/execution
+    ports:
+      - "${API_PORT:-3000}:3000"
+    healthcheck:
+      <<: *app-healthcheck
+      test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+
+  executor:
+    <<: *app
+    profiles: [dev]
+    command: ["node", "apps/executor/src/main.ts"]
+    environment:
+      PORT: "3000"
+      EXECUTION_DATABASE_URL: postgres://execution:${EXECUTION_DB_PASSWORD:-execution}@postgres:5432/execution
+    healthcheck:
+      <<: *app-healthcheck
+      test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+
+  business-mock:
+    <<: *app
+    profiles: [dev]
+    command: ["node", "apps/business-mock/src/main.ts"]
+    environment:
+      PORT: "3000"
+      BUSINESS_DATABASE_URL: postgres://business:${BUSINESS_DB_PASSWORD:-business}@postgres:5432/business
+    ports:
+      - "${BUSINESS_MOCK_PORT:-3100}:3000"
+    healthcheck:
+      <<: *app-healthcheck
+      test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+
+volumes:
+  postgres-data:

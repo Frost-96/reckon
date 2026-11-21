@@ -1,0 +1,5 @@
+{
+  "name": "@reckon/web",
+  "private": true,
+  "type": "module"
+}

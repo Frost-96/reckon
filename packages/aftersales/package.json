@@ -1,0 +1,8 @@
+{
+  "name": "@reckon/aftersales",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}
