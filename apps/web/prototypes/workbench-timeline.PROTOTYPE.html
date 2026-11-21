@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>售后 Agent 界面原型 · PROTOTYPE</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1d2330;--mute:#6b7385;--line:#e3e6ec;--ok:#1f9d55;--warn:#d98a00;--bad:#d64045;--info:#3b6fd9;--soft-ok:#e7f6ee;--soft-warn:#fff4dc;--soft-bad:#fde9ea;--soft-info:#eaf0fd;--exp:#f2b705}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);font-size:14px}
+button{font:inherit;cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.5}
+#app{height:100%}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:#fff;white-space:nowrap}
+.t-ok{color:var(--ok);background:var(--soft-ok);border-color:#bfe6cf}
+.t-warn{color:#9a6200;background:var(--soft-warn);border-color:#f3d9a4}
+.t-bad{color:var(--bad);background:var(--soft-bad);border-color:#f3c2c4}
+.t-info{color:var(--info);background:var(--soft-info);border-color:#c7d6f6}
+.t-mute{color:var(--mute);background:#f1f2f5}
+.msgs{display:flex;flex-direction:column;gap:10px;overflow:auto;padding:14px}
+.msg{max-width:82%;padding:9px 12px;border-radius:14px;line-height:1.55;white-space:pre-wrap}
+.msg.user{align-self:flex-end;background:#3b6fd9;color:#fff;border-bottom-right-radius:4px}
+.msg.agent{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.draft{align-self:flex-start;background:#fff;border:1px dashed #9db3e8;color:#3d4a66}
+.msg.draft.stale{text-decoration:line-through;color:#a0a6b4;border-color:#e0b3b5}
+.draft-tag{display:block;font-size:11px;color:var(--mute);margin-top:4px;text-decoration:none}
+.hint{align-self:flex-start;font-size:12px;color:var(--mute);display:flex;align-items:center;gap:6px}
+.dots{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--mute);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+.card{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fafbfc}
+.card .opt{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line)}
+.card .opt:last-child{border-bottom:none}
+.kv{display:grid;grid-template-columns:52px 1fr;gap:3px 8px;font-size:13px}
+.kv b{color:var(--mute);font-weight:500}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px}
+.btn.pri{background:var(--info);color:#fff;border-color:var(--info)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.chat-form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#fff}
+.chat-form input{flex:1;border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:inherit;outline:none}
+.chat-form input:focus{border-color:var(--info)}
+.exp-zone{border:2px dashed var(--exp);background:repeating-linear-gradient(135deg,#fffbea,#fffbea 10px,#fff6cf 10px,#fff6cf 20px);border-radius:10px;padding:8px 10px}
+.exp-title{font-size:12px;font-weight:600;color:#8a6500;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ctrl{display:flex;flex-wrap:wrap;gap:6px}
+.cbtn{border:1px solid #e3c766;background:#fff;border-radius:8px;padding:5px 9px;font-size:12px;text-align:left}
+.cbtn.armed{background:#8a6500;color:#fff;border-color:#8a6500}
+.cbtn.go{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cbtn small{display:block;font-size:10.5px;opacity:.75}
+.tl-item{display:grid;grid-template-columns:64px 18px 1fr;gap:8px;padding:6px 0;border-bottom:1px solid #f0f1f4;align-items:start}
+.tl-t{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--mute);padding-top:2px}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:5px;background:var(--info)}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}.dot.mute{background:#b7bcc8}
+.tl-title{font-weight:600;font-size:13px}
+.tl-detail{font-size:12px;color:var(--mute);margin-top:2px}
+.live{animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(59,111,217,.25)}}
+.intent{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+.intent-h{display:flex;justify-content:space-between;gap:8px;align-items:center;font-weight:600;font-size:13px}
+.hist{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;align-items:center}
+.hist .arrow{color:#b7bcc8;font-size:11px}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+.biz table{width:100%;border-collapse:collapse;font-size:12px}
+.biz td,.biz th{border-bottom:1px solid #f0f1f4;padding:4px 6px;text-align:left}
+.biz th{color:var(--mute);font-weight:500}
+.inv{display:flex;gap:6px;flex-wrap:wrap}
+.toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;z-index:60}
+#switcher{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;background:#111;color:#fff;border-radius:999px;padding:5px 6px;box-shadow:0 6px 24px rgba(0,0,0,.35);z-index:70;font-size:13px;border:2px solid #ff3d7f}
+#switcher button{background:#2a2a2a;color:#fff;border:none;border-radius:999px;width:30px;height:30px}
+#switcher .lab{padding:0 10px;min-width:170px;text-align:center}
+#switcher .tag{font-size:10px;color:#ff8fb5;display:block}
+
+.vA{display:grid;grid-template-rows:auto auto 1fr;height:100%}
+.vA .top{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.vA .top h1{font-size:16px;margin:0 8px 0 0}
+.vA .strip{padding:8px 16px 0}
+.vA .split{display:grid;grid-template-columns:minmax(320px,38%) 1fr;gap:12px;padding:12px 16px 70px;min-height:0}
+.vA .chat{display:flex;flex-direction:column;background:#eef1f6;border:1px solid var(--line);border-radius:14px;min-height:0;overflow:hidden}
+.vA .chat-h{padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);font-weight:600;display:flex;justify-content:space-between}
+.vA .chat .msgs{flex:1}
+.vA .right{display:grid;grid-template-rows:1fr auto;gap:12px;min-height:0}
+.vA .tl{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;overflow:auto;min-height:0}
+.vA .tl h3,.vA .lower h3{margin:0 0 6px;font-size:13px;color:var(--mute);font-weight:600}
+.vA .lower{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}
+.vA .lower>div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;max-height:250px;overflow:auto}
+.vA .intents{display:grid;gap:8px}
+
+.vB{display:grid;grid-template-rows:auto 1fr auto;height:100%;background:#fbfbfc}
+.vB .top{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);background:#fff;flex-wrap:wrap}
+.vB .top h1{font-size:16px;margin:0}
+.vB .leasebar{flex:0 0 220px;height:8px;border-radius:99px;background:#eceef3;overflow:hidden}
+.vB .leasebar i{display:block;height:100%;background:var(--ok);transition:width .2s}
+.vB .lanes-wrap{overflow:auto;padding:0 16px 0 0;position:relative;min-height:0}
+.vB .lanes{display:grid;grid-auto-rows:minmax(58px,auto);gap:0;position:relative;width:max-content}
+.vB .lane-l{position:sticky;left:0;display:flex;align-items:center;font-weight:600;font-size:12.5px;color:var(--mute);background:#fbfbfc;border-bottom:1px solid var(--line);border-right:1px solid var(--line);z-index:2;padding-left:4px}
+.vB .lane-l span{display:block}
+.vB .cell{border-bottom:1px solid var(--line);padding:6px 4px;display:flex;align-items:center}
+.vB .ev{width:148px;border-radius:8px;padding:5px 7px;font-size:11.5px;border:1px solid var(--line);background:#fff;line-height:1.35}
+.vB .ev b{display:block;font-size:12px}
+.vB .ev.ok{border-color:#bfe6cf;background:var(--soft-ok)}
+.vB .ev.warn{border-color:#f3d9a4;background:var(--soft-warn)}
+.vB .ev.bad{border-color:#f3c2c4;background:var(--soft-bad)}
+.vB .ev.info{border-color:#c7d6f6;background:var(--soft-info)}
+.vB .ev .n{font-family:ui-monospace,Menlo,monospace;color:var(--mute);font-size:10px}
+.vB .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;padding:12px 16px 70px;border-top:1px solid var(--line);background:#fff;max-height:44vh;overflow:auto}
+.vB .sm-title{font-size:12px;color:var(--mute);font-weight:600;margin-bottom:6px}
+.vB .float{position:fixed;left:12px;top:70px;width:176px;z-index:20}
+.vB .float .ctrl{flex-direction:column}
+.vB .float .cbtn{width:100%}
+.vB .drawer{position:fixed;top:0;right:0;height:100%;width:400px;background:#eef1f6;border-left:1px solid var(--line);box-shadow:-10px 0 30px rgba(0,0,0,.12);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s;z-index:40}
+.vB .drawer.open{transform:none}
+.vB.drawer-on .lanes-wrap,.vB.drawer-on .board{margin-right:400px}
+.vB .drawer .msgs{flex:1}
+.vB .drawer-h{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#fff;border-bottom:1px solid var(--line);font-weight:600}
+.vB .badge{background:var(--bad);color:#fff;border-radius:99px;padding:0 6px;font-size:11px;margin-left:4px}
+.vB .stepper{display:flex;gap:0;align-items:center;flex-wrap:wrap;margin-top:6px}
+.vB .stepper .s{font-size:11px;padding:3px 7px;border:1px solid var(--line);background:#f4f5f8;color:#9aa0ad}
+.vB .stepper .s.on{color:#fff;background:var(--info);border-color:var(--info)}
+.vB .stepper .s.ok{color:#fff;background:var(--ok);border-color:var(--ok)}
+.vB .stepper .s.warn{color:#fff;background:var(--warn);border-color:var(--warn)}
+.vB .stepper .s.bad{color:#fff;background:var(--bad);border-color:var(--bad)}
+
+.vC{height:100%;background:#0f1320;color:#e8ebf3;display:grid;grid-template-rows:auto 1fr auto auto;gap:10px;padding:14px 18px 74px}
+.vC .phases{display:flex;gap:6px}
+.vC .ph{flex:1;text-align:center;padding:8px 4px;border-radius:8px;background:#1a2032;color:#7c849b;font-size:13px;position:relative}
+.vC .ph.done{background:#183a2a;color:#7fe0a6}
+.vC .ph.cur{background:#2a4fb0;color:#fff;box-shadow:0 0 0 2px #6d93ff inset}
+.vC .stage{display:grid;grid-template-columns:330px 1fr 340px;gap:14px;min-height:0}
+.vC .col{background:#161b2b;border:1px solid #252c42;border-radius:16px;padding:12px;min-height:0;display:flex;flex-direction:column}
+.vC .col h2{margin:0 0 10px;font-size:13px;letter-spacing:.08em;color:#8f98b3;font-weight:600}
+.vC .phone{flex:1;background:#eef1f6;border-radius:22px;border:6px solid #2a3148;display:flex;flex-direction:column;overflow:hidden;color:var(--ink);min-height:0}
+.vC .phone .msgs{flex:1;font-size:13px}
+.vC .insts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.vC .inst{border-radius:14px;padding:14px;background:#1d2338;border:1px solid #2b3352}
+.vC .inst.owner{border-color:#4f7cff;box-shadow:0 0 0 1px #4f7cff}
+.vC .inst h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.vC .light{width:12px;height:12px;border-radius:50%;background:#5a6278}
+.vC .light.run{background:#35d07f;box-shadow:0 0 12px #35d07f}
+.vC .light.dead{background:#ff5c64;box-shadow:0 0 12px #ff5c64}
+.vC .light.pause{background:#ffb020;box-shadow:0 0 12px #ffb020}
+.vC .inst .st{margin-top:8px;font-size:13px;color:#aab2c9}
+.vC .lease{margin-top:10px;height:6px;background:#2a3148;border-radius:9px;overflow:hidden}
+.vC .lease i{display:block;height:100%;background:#35d07f;transition:width .2s}
+.vC .now{margin-top:14px;padding:14px;border-radius:14px;background:#11172a;border:1px solid #252c42}
+.vC .now .k{font-size:12px;color:#8f98b3}
+.vC .now .v{font-size:20px;font-weight:700;margin-top:4px}
+.vC .now .d{font-size:13px;color:#aab2c9;margin-top:4px}
+.vC .ticker{margin-top:12px;display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0}
+.vC .tk{display:flex;gap:8px;font-size:12.5px;color:#aab2c9;align-items:baseline}
+.vC .tk .mono{color:#5f6886}
+.vC .big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vC .num{background:#1d2338;border-radius:14px;padding:12px;text-align:center}
+.vC .num .n{font-size:46px;font-weight:800;line-height:1}
+.vC .num .l{font-size:12px;color:#8f98b3;margin-top:4px}
+.vC .num.good .n{color:#7fe0a6}.vC .num.bad .n{color:#ff7b82}
+.vC .pills{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.vC .pill{border-radius:12px;padding:10px;background:#1d2338;font-size:13px}
+.vC .pill .s{float:right;font-weight:700}
+.vC .records{margin-top:10px;font-size:12px;color:#aab2c9;overflow:auto}
+.vC .caption{text-align:center;font-size:22px;font-weight:600;min-height:34px;color:#fff}
+.vC .caption small{display:block;font-size:13px;color:#8f98b3;font-weight:400;margin-top:2px}
+.vC .exp-zone{background:repeating-linear-gradient(135deg,#2b2510,#2b2510 10px,#332b0f 10px,#332b0f 20px);border-color:#c99a00}
+.vC .exp-title{color:#f2c94c}
+.vC .cbtn{background:#1d2338;color:#e8ebf3;border-color:#5b4a12;font-size:14px;padding:9px 14px}
+.vC .cbtn.armed{background:#f2b705;color:#111}
+.vC .cbtn.go{background:#4f7cff;border-color:#4f7cff}
+.vC .chip{background:#232a40;border-color:#323a56;color:#cdd3e4}
+.vC .chip.t-ok{color:#7fe0a6;background:#183a2a;border-color:#245c40}
+.vC .chip.t-bad{color:#ff9aa0;background:#3a1a1e;border-color:#6a2a31}
+.vC .chip.t-warn{color:#ffd27a;background:#3a2e12;border-color:#6b5420}
+.vC .chip.t-info{color:#9db8ff;background:#1b2850;border-color:#2e4384}
+.vC .top-r{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vC .top-r h1{font-size:15px;margin:0;color:#cdd3e4}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="switcher"><button id="swPrev" title="上一个变体（←）">←</button><div class="lab"><span class="tag">PROTOTYPE · 界面变体</span><span id="swLab"></span></div><button id="swNext" title="下一个变体（→）">→</button></div>
+<script>
+const VARIANTS=[{k:'A',name:'分栏工作台'},{k:'B',name:'时间线泳道'},{k:'C',name:'答辩舞台'}];
+const PHASES=['理解诉求','选择订单','确认参数','写1 创建售后单','写2 生成寄回单','完成'];
+const ORDERS=[{id:'A1024',date:'11-14',item:'跑步鞋 · 42 码',price:'¥399'},{id:'A0987',date:'11-02',item:'跑步鞋 · 41 码',price:'¥459'}];
+const REASONS=['尺码不合适','质量问题','不喜欢'];
+const FINAL='已为你提交退货：售后单 AS-7731 已创建，寄回单号 RS-5520。请在 7 天内把商品寄回，寄回运费 ¥{fee} 会从退款中扣除。';
+const qs=new URLSearchParams(location.search);
+let variant=VARIANTS.some(v=>v.k===qs.get('variant'))?qs.get('variant'):'A';
+let env=qs.get('env')==='prod'?'prod':'exp';
+let speed=[1,2,4,8].includes(+qs.get('speed'))?+qs.get('speed'):1;
+let gen=0;
+let S;
+let drawerOpen=false;
+let seenAgent=0;
+
+function fresh(){return{t:0,turn:0,task:'WAITING_USER',cur:1,lease:{owner:null,version:0,left:0},inst:{1:'空闲',2:'空闲'},msgs:[],draft:null,hint:null,steps:[],stepCount:0,intents:[],conf:null,biz:{as:[],ship:[],rejected:[]},world:{fee:12,refunded:false,app:null},reads:{},pending:{type:'text'},armed:{kill:null,drop:false,zombie:false,mut:null},caption:'等待顾客发来第一条消息',phase:0,modelCalls:0,done:false,stopped:false,editing:false,busy:false,closed:false,zombie:null,toast:null,order:null}}
+
+function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return(h>>>0).toString(16).padStart(8,'0')}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms/speed));
+class Abort extends Error{}
+async function wait(ms,g){await sleep(ms);if(g!==gen)throw new Abort()}
+function fmt(t){return 'T+'+t.toFixed(1)+'s'}
+function tick(sec){S.t+=sec}
+function ev(o){const s=Object.assign({n:++S.stepCount,t:S.t,inst:S.cur,tone:'info',detail:''},o);S.steps.push(s);if(o.cap)S.caption=o.cap;render();return s}
+function toast(m){S.toast=m;render();const g=gen;setTimeout(()=>{if(g===gen){S.toast=null;render()}},2200)}
+
+async function run(fn){const g=gen;S.busy=true;render();try{await fn(g)}catch(e){if(!(e instanceof Abort))console.error(e)}finally{if(g===gen){S.busy=false;render()}}}
+
+async function claim(g){if(S.lease.owner===S.cur)return;S.lease.version++;S.lease.owner=S.cur;S.lease.left=10;S.inst[S.cur]='执行中';S.task='RUNNING';ev({kind:'lease',title:`实例 ${S.cur} 认领任务`,detail:`FOR UPDATE SKIP LOCKED · 版本 ${S.lease.version} · 租约 10s`,tone:'info'});await wait(300,g)}
+function release(){const who=S.cur;S.lease.owner=null;S.lease.left=0;if(S.inst[who]==='执行中')S.inst[who]='空闲';S.task=S.closed?'CLOSED':'WAITING_USER';ev({kind:'lease',title:`实例 ${who} 释放租约`,detail:'本轮结束，任务转为 WAITING_USER',tone:'info',inst:who})}
+
+async function point(g,where){if(S.armed.kill==='now'||(S.armed.kill==='between'&&where==='afterW1')){S.armed.kill=null;return killAndRecover(g,where)}return null}
+
+function pointLabel(w){return{afterW1:'第一个写操作确认后、第二个写操作前',afterTool:'工具结果到达后、写检查点前',afterModel:'模型输出落盘后',streaming:'模型流式输出中',afterW1Prepared:'写1 标为 PREPARED 后、发出前'}[w]||w}
+
+async function killAndRecover(g,where){const dead=S.cur;S.inst[dead]='已终止 · SIGKILL';S.hint='处理中…';ev({kind:'fault',title:`实例 ${dead} 被杀掉（SIGKILL）`,detail:'故障点：'+pointLabel(where),tone:'bad',cap:`实例 ${dead} 被杀掉。顾客那边只看到「处理中」。`});await leaseExpire(g,dead);return takeover(g,dead)}
+
+async function leaseExpire(g,who){while(S.lease.left>0){S.lease.left--;tick(1);render();await wait(230,g)}S.task='READY';S.lease.owner=null;ev({kind:'lease',title:'看门狗检测到租约过期',detail:`实例 ${who} 没有续约，任务回到 READY`,tone:'warn',inst:who,cap:'看门狗发现租约过期，任务回到待执行。'})}
+
+async function takeover(g,from){const nxt=from===1?2:1;S.cur=nxt;await claim(g);if(S.inst[from]==='已终止 · SIGKILL')S.inst[from]='已重启 · 空闲';const done=S.steps.filter(s=>(s.kind==='model'||s.kind==='tool')&&!s.live).length;ev({kind:'recover',title:'按步骤日志重建',detail:`重放 ${done} 个已完成步骤 · 0 次模型调用`,tone:'ok',cap:`实例 ${nxt} 接管：按步骤日志重建进度，不重新调用模型。`});await wait(500,g);for(const it of S.intents.filter(i=>i.state==='SENT'||i.state==='UNKNOWN'))await verify(g,it);return recheck(g)}
+
+function orderVal(){const w=S.world;return `订单${w.refunded?'已退款':'已签收'} · 进行中售后：${w.app?w.app+'（他人提交）':'无'}`}
+function rulesVal(){return `7 天内可退 · 寄回运费 ¥${S.world.fee}`}
+const READERS={'查询订单':orderVal,'查询售后规则':rulesVal};
+
+async function recheck(g){const names=Object.keys(S.reads);if(!names.length){ev({kind:'recheck',title:'复查',detail:'本任务还没有易变读，无需复查',tone:'mute'});return 'continue'}ev({kind:'recheck',title:'核验完成，开始复查',detail:'重新执行去重后的易变读，比较结果哈希',tone:'info',cap:'复查：重新查一遍会变的数据，看条件有没有变。'});let changed=[];for(const nm of names){await wait(350,g);tick(.3);const now=READERS[nm]();const old=S.reads[nm];if(now===old)ev({kind:'tool',title:`复查 · ${nm}`,detail:`哈希一致（${hash(now).slice(0,6)}）`,tone:'ok'});else{changed.push(nm);ev({kind:'tool',title:`复查 · ${nm}`,detail:`${old} → ${now}`,tone:'warn'})}}if(!changed.length){ev({kind:'disposition',title:'处置：继续',detail:'没有变化，不向模型上下文追加任何内容',tone:'ok',cap:'条件没变，直接从断点继续。'});return 'continue'}const w=S.world;let d,why;if(w.refunded){d='stop';why='订单已退款'}else if(w.app){d='stop';why=`商品已有他人提交的进行中申请 ${w.app}（按 client_ref 识别，不属于本任务）`}else if(w.fee!==12&&!(S.intents.find(i=>i.key==='W1')||{}).committed){d='reconfirm';why=`寄回运费 ¥12 → ¥${w.fee}，写1 尚未完成`}else{d='continue';why='变化与剩余写操作无关'}const label={stop:'停止并说明原因',reconfirm:'重新确认',continue:'继续'}[d];ev({kind:'disposition',title:`assess 处置：${label}`,detail:why,tone:d==='continue'?'ok':'warn',cap:`业务规则判定：${label}。`});if(d!=='continue')ev({kind:'system',title:'内核写入结构化消息',detail:`条件已变化：${why}；处置：${label}`,tone:'info'});return d}
+
+async function verify(g,it){const target=it.deadline+2;if(S.t<target){ev({kind:'intent',title:`等待 ${it.label} 的截止时刻 + 余量`,detail:`截止 ${fmt(it.deadline)} + 2s；等待期间心跳照常续约`,tone:'info',cap:'先等请求的截止时刻过去，再去核验，避免请求还在路上。'});while(S.t<target){tick(.5);render();await wait(140,g)}}await wait(300,g);if(it.committed)setIntent(it,'VERIFIED_DONE',`按操作标识查到 ${it.result}，复用原结果`);else setIntent(it,'VERIFIED_ABSENT','查不到，稍后用原操作标识重发')}
+
+function setIntent(it,state,note){it.state=state;it.hist.push({s:state,t:S.t,note:note||''});const tone={CONFIRMED:'ok',VERIFIED_DONE:'ok',UNKNOWN:'warn',VERIFIED_ABSENT:'warn',CANCELLED:'mute',REJECTED:'bad',HANDOFF:'bad'}[state]||'info';ev({kind:'intent',title:`${it.label}：${state}`,detail:note||'',tone})}
+
+function newIntent(key){const w1=S.intents.find(i=>i.key==='W1');const op=key==='W1'?'op-'+hash(`task-1|create_aftersales|${S.order}|L1`):'op-'+hash(`${w1.opId}|create_return_shipment`);const it={key,label:key==='W1'?'写1 · 创建售后单':'写2 · 生成寄回单',opId:op,state:null,hist:[],deadline:null,result:null,committed:false};S.intents.push(it);return it}
+
+function commit(it){if(it.key==='W1'){it.result='AS-7731';S.biz.as.push({id:'AS-7731',ref:it.opId,item:S.conf.params.item,fee:S.conf.params.fee,state:'待寄回',own:true})}else{it.result='RS-5520';S.biz.ship.push({id:'RS-5520',ref:it.opId,as:'AS-7731'})}it.committed=true;ev({kind:'biz',title:`业务服务提交 ${it.result}`,detail:`client_ref = ${it.opId}`,tone:'ok'})}
+
+function applyMutation(m){if(m==='competing'){S.world.app='AS-7700';S.biz.as.push({id:'AS-7700',ref:'其他渠道',item:S.conf.params.item,fee:12,state:'进行中',own:false});ev({kind:'biz',title:'故障期间：插入他人申请 AS-7700',detail:'同一商品出现一笔进行中的售后申请',tone:'warn'})}if(m==='refunded'){S.world.refunded=true;ev({kind:'biz',title:'故障期间：订单被退款',detail:`${S.order} 状态改为已退款`,tone:'warn'})}if(m==='fee'){S.world.fee=18;ev({kind:'biz',title:'故障期间：寄回运费调整',detail:'¥12 → ¥18',tone:'warn'})}}
+
+async function send(g,it,extra){it.deadline=S.t+5;setIntent(it,'SENT',`截止时刻 ${fmt(it.deadline)}（Δ = 5s）${extra?' · '+extra:''}`);if(S.armed.zombie){S.armed.zombie=false;return zombieFlow(g,it)}if(S.armed.drop){S.armed.drop=false;await wait(400,g);tick(.2);commit(it);ev({kind:'fault',title:'响应丢失',detail:'业务服务已提交，但连接被断开',tone:'bad',cap:'写入其实成功了，但执行进程没收到响应。'});tick(3);await wait(500,g);setIntent(it,'UNKNOWN','客户端超时，结果未知');await verify(g,it);return}await wait(450,g);tick(.3);commit(it);setIntent(it,'CONFIRMED',`结果 ${it.result}`)}
+
+async function zombieFlow(g,it){const z=S.cur;const ver=S.lease.version;S.zombie={inst:z,it,deadline:it.deadline,ver};S.inst[z]='假死 · SIGSTOP';S.hint='处理中…';ev({kind:'fault',title:`实例 ${z} 假死（SIGSTOP）`,detail:'写入意图已标为 SENT，请求还没发出',tone:'bad',cap:`实例 ${z} 被暂停：它手里拿着一个还没发出的写请求。`});await leaseExpire(g,z);const d=await takeover(g,z);if(d!=='continue')return;await send(g,it,'沿用原操作标识重发')}
+
+async function zombieWake(g){const z=S.zombie;S.zombie=null;await wait(700,g);S.inst[z.inst]='苏醒 · SIGCONT';ev({kind:'fault',title:`实例 ${z.inst} 苏醒（SIGCONT）`,detail:'它把暂停前做好的请求发了出去',tone:'warn',inst:z.inst,cap:`实例 ${z.inst} 醒了，还想接着干。`});await wait(600,g);tick(.2);S.biz.rejected.push({op:z.it.opId,why:'DEADLINE_EXCEEDED'});ev({kind:'biz',title:'业务服务拒绝过期请求',detail:`DEADLINE_EXCEEDED · 截止 ${fmt(z.deadline)} < 现在 ${fmt(S.t)}`,tone:'ok',inst:z.inst});await wait(500,g);ev({kind:'lease',title:`实例 ${z.inst} 的检查点写入被拒绝`,detail:`版本校验失败：持有 ${z.ver}，当前 ${S.lease.version}`,tone:'ok',inst:z.inst,cap:'过期实例的写入全部被拦下，没有重复。'});S.inst[z.inst]='已退出'}
+
+async function modelCall(g,label,text,extra,attempt){attempt=attempt||1;S.modelCalls++;if(S.draft&&S.draft.stale){ev({kind:'system',title:`丢弃尝试 ${S.draft.attempt} 的草稿`,detail:'新的尝试序号已出现',tone:'warn'});S.draft=null}const st=ev({kind:'model',title:`模型调用 · ${label}`,detail:attempt>1?`尝试 ${attempt}`:'',tone:'info',live:true});tick(.8);if(text){S.draft={text:'',attempt,stale:false};for(let i=0;i<text.length;i+=2){await wait(40,g);S.draft.text=text.slice(0,i+2);render();if(S.armed.kill==='now'){S.armed.kill=null;S.draft.stale=true;st.live=false;st.detail='中断，未落盘';st.tone='bad';render();const d=await killAndRecover(g,'streaming');if(d!=='continue')return d;return modelCall(g,label,text,extra,attempt+1)}}}else{await wait(500,g)}st.live=false;st.detail=(st.detail?st.detail+' · ':'')+'已落盘';st.tone='ok';if(text){S.draft=null;S.hint=null;S.msgs.push({who:'agent',text,extra:extra||null});ev({kind:'system',title:'用户可见消息落盘',detail:`唯一键 (任务, 轮次 ${S.turn}, 序号 ${S.msgs.length})`,tone:'mute'})}render();const d=await point(g,'afterModel');return d||'continue'}
+
+async function tool(g,name,input,result,read){const st=ev({kind:'tool',title:`工具调用 · ${name}`,detail:input,tone:'info',live:true});tick(.3);await wait(420,g);st.live=false;st.detail=`${input} → ${result}`;st.tone='ok';if(read)S.reads[name]=READERS[name]();render();const d=await point(g,'afterTool');return d||'continue'}
+
+function userMsg(text){S.msgs.push({who:'user',text});ev({kind:'user',title:'顾客消息',detail:text,tone:'mute'})}
+
+async function turn1(g){S.turn=1;S.phase=0;await claim(g);await modelCall(g,'理解诉求',null);await tool(g,'查询订单','顾客 C-88 近 30 天订单',`2 笔候选：${ORDERS.map(o=>o.id).join('、')} · 进行中售后：无`,true);S.reads['查询订单']=orderVal();await modelCall(g,'追问订单','找到两笔包含跑步鞋的订单，你要退的是哪一笔？',{type:'choice'});ev({kind:'tool',title:'交互工具 · ask_user',detail:'槽位：订单 · 本轮结束',tone:'info'});S.pending={type:'choice'};S.phase=1;release()}
+
+function makeConf(params){const old=S.conf;const v=old?old.v+1:1;if(old&&old.valid){old.valid=false;ev({kind:'guard',title:`确认 v${old.v} 作废`,detail:'参数已变化，旧确认失效',tone:'warn'})}S.conf={v,params,hash:hash(JSON.stringify(params)),valid:true,confirmed:false}}
+
+async function turn2(g){S.turn=2;await claim(g);await modelCall(g,'选定订单后继续',null);await tool(g,'查询售后规则',`订单 ${S.order}`,'7 天内可退 · 寄回运费 ¥12',true);const o=ORDERS.find(x=>x.id===S.order);makeConf({order:o.id,item:o.item,qty:1,reason:'尺码不合适',fee:S.world.fee});await modelCall(g,'生成确认','请确认以下退货信息，确认后我马上提交：',{type:'confirm',v:S.conf.v});ev({kind:'tool',title:'交互工具 · request_confirmation',detail:`参数哈希 ${S.conf.hash} · 本轮结束`,tone:'info'});S.pending={type:'confirm'};S.phase=2;release()}
+
+async function turnModify(g,reason,qty){S.turn++;await claim(g);const p=Object.assign({},S.conf.params,{reason,qty});makeConf(p);await modelCall(g,'更新参数','已按你的修改更新，请重新确认：',{type:'confirm',v:S.conf.v});ev({kind:'tool',title:'交互工具 · request_confirmation',detail:`参数哈希 ${S.conf.hash} · 本轮结束`,tone:'info'});S.pending={type:'confirm'};release()}
+
+async function writeOp(g,key){let it=S.intents.find(i=>i.key===key);if(it&&(it.state==='CONFIRMED'||it.state==='VERIFIED_DONE'))return 'continue';const reuse=!!it;if(!it)it=newIntent(key);S.phase=key==='W1'?3:4;setIntent(it,'PREPARED',reuse?`沿用原操作标识 ${it.opId}，参数换为确认 v${S.conf.v}`:(key==='W2'?`操作标识由写1 派生：${it.opId}`:`操作标识 ${it.opId}`));if(key==='W1'&&S.armed.mut){const m=S.armed.mut;S.armed.mut=null;applyMutation(m);const d=await killAndRecover(g,'afterW1Prepared');if(d==='stop'){setIntent(it,'CANCELLED','处置为停止');return 'stop'}if(d==='reconfirm'){S.conf.valid=false;ev({kind:'guard',title:`确认 v${S.conf.v} 作废`,detail:'处置为重新确认',tone:'warn'});return 'reconfirm'}}await send(g,it);return 'continue'}
+
+async function turn3(g){S.turn++;S.conf.confirmed=true;await claim(g);await modelCall(g,'决定提交退货',null);ev({kind:'guard',title:'确认检查通过',detail:`确认 v${S.conf.v} · 参数哈希 ${S.conf.hash} 一致`,tone:'ok'});ev({kind:'tool',title:'工具调用 · 提交退货（写工具）',detail:'含 2 个写操作：创建售后单 → 生成寄回单',tone:'info'});let r=await writeOp(g,'W1');if(r==='continue'){const d=await point(g,'afterW1');if(d==='stop'||d==='reconfirm')r=d}if(r==='continue')r=await writeOp(g,'W2');if(r==='stop'){S.stopped=true;const why=S.world.refunded?`订单 ${S.order} 刚刚已经完成退款，不需要再申请退货了。`:`这件商品刚刚已经有一笔进行中的售后申请（AS-7700，由其他渠道提交），不能重复提交。如需协助可以转人工客服。`;await modelCall(g,'说明原因',why);S.pending={type:'text'};S.phase=5;release();return}if(r==='reconfirm'){makeConf(Object.assign({},S.conf.params,{fee:S.world.fee}));await modelCall(g,'说明变化',`寄回运费刚刚由 ¥12 调整为 ¥${S.world.fee}，需要你重新确认：`,{type:'confirm',v:S.conf.v});ev({kind:'tool',title:'交互工具 · request_confirmation',detail:`参数哈希 ${S.conf.hash} · 本轮结束`,tone:'info'});S.pending={type:'confirm'};S.phase=2;release();return}await modelCall(g,'告知结果',FINAL.replace('{fee}',S.conf.params.fee));S.phase=5;S.done=true;S.pending={type:'text'};S.caption='退货办完：1 张售后单、1 张寄回单，没有重复。';release();if(S.zombie)await zombieWake(g)}
+
+async function followup(g,text){S.turn++;if(/谢|结束|没有了|好的/.test(text)){await claim(g);await modelCall(g,'收尾','不客气，有问题随时找我。这次会话先结束啦。');S.closed=true;S.pending=null;release();ev({kind:'lease',title:'任务关闭',detail:'顾客结束会话 · CLOSED',tone:'mute'});S.caption='会话结束，任务关闭。';return}await claim(g);await modelCall(g,'理解追问',null);if(S.done){await tool(g,'查询售后单与进度','AS-7731','待寄回 · RS-5520 待揽收',false);await modelCall(g,'回答进度','售后单 AS-7731 目前是「待寄回」，寄回单 RS-5520 还在等快递揽收。寄出后一般 3 个工作日内完成退款。')}else{await modelCall(g,'回答','这笔退货已经停止办理。如果还需要别的帮助，告诉我就行。')}S.pending={type:'text'};release()}
+
+function onSend(text){text=text.trim();if(!text||!canType())return;userMsg(text);if(S.turn===0)run(turn1);else run(g=>followup(g,text))}
+function canType(){return !S.busy&&!S.closed&&S.pending&&S.pending.type==='text'}
+
+function act(a,el){const[k,v]=a.split(':');if(k==='choose'){if(!S.pending||S.pending.type!=='choice'||S.busy)return;S.pending=null;S.order=v;const o=ORDERS.find(x=>x.id===v);userMsg(`就是这笔：${o.id}（${o.item}）`);run(turn2)}if(k==='confirm'){if(!S.pending||S.pending.type!=='confirm'||S.busy)return;S.pending=null;S.editing=false;userMsg('确认');run(turn3)}if(k==='modify'){if(!S.pending||S.pending.type!=='confirm'||S.busy)return;S.editing=true;render()}if(k==='cancelModify'){S.editing=false;render()}if(k==='submitModify'){const r=document.querySelector('[data-f=reason]').value;const q=+document.querySelector('[data-f=qty]').value;S.editing=false;S.pending=null;userMsg(`改一下：原因「${r}」，数量 ${q}`);run(g=>turnModify(g,r,q))}if(k==='kill'){if(S.closed)return;if(S.armed.kill){S.armed.kill=null}else{S.armed.kill=S.busy?'now':'between';toast(S.busy?'将在下一个步骤边界杀掉执行进程':'已就绪：将在两次写入之间杀掉执行进程')}render()}if(k==='drop'){S.armed.drop=!S.armed.drop;if(S.armed.drop)toast('已就绪：下一个写操作提交后断开连接');render()}if(k==='zombie'){S.armed.zombie=!S.armed.zombie;if(S.armed.zombie)toast('已就绪：下一个写操作标为 SENT 后暂停执行进程');render()}if(k==='mut'){const w1=S.intents.find(i=>i.key==='W1');if(w1&&w1.committed){toast('写1 已完成，请先点「重新开始」');return}S.armed.mut=S.armed.mut===v?null:v;if(S.armed.mut)toast('已就绪：写1 发出前崩溃，同时改动业务状态');render()}if(k==='reset')reset();if(k==='auto')autoplay('kill');if(k==='close'){if(S.busy||S.closed)return;S.closed=true;S.pending=null;S.task='CLOSED';ev({kind:'lease',title:'任务关闭',detail:'顾客结束会话 · CLOSED',tone:'mute'})}if(k==='speed'){speed=+v;render()}if(k==='drawer'){drawerOpen=!drawerOpen;render()}if(k==='env'){env=env==='exp'?'prod':'exp';setParam('env',env==='prod'?'prod':null);mount()}}
+
+function reset(){gen++;S=fresh();S.editing=false;seenAgent=0;mount()}
+
+async function until(pred,g){while(!pred()){await wait(120,g)}}
+async function typeInto(text,g){const inp=document.getElementById('chatInput');for(let i=1;i<=text.length;i++){inp.value=text.slice(0,i);await wait(55,g)}await wait(250,g);inp.value='';onSend(text)}
+const MODES={kill:'两次写入之间杀掉执行进程',drop:'写1 提交后丢弃响应',zombie:'写1 发出前执行进程假死',competing:'写1 前崩溃并插入他人申请',refunded:'写1 前崩溃且订单被退款',fee:'写1 前崩溃且运费变化'};
+async function autoplay(mode){mode=MODES[mode]?mode:'kill';reset();const g=gen;if(variant==='B'){drawerOpen=true;render()}try{S.caption='完整演示：'+MODES[mode];render();await wait(600,g);await typeInto('我想退掉上周买的跑步鞋，尺码不合适',g);await until(()=>S.pending&&S.pending.type==='choice'&&!S.busy,g);await wait(700,g);act('choose:A1024');await until(()=>S.pending&&S.pending.type==='confirm'&&!S.busy,g);await wait(900,g);if(mode==='kill')S.armed.kill='between';else if(mode==='drop')S.armed.drop=true;else if(mode==='zombie')S.armed.zombie=true;else S.armed.mut=mode;toast('演示：已就绪，'+MODES[mode]);render();await wait(900,g);act('confirm');if(mode==='fee'){await until(()=>S.pending&&S.pending.type==='confirm'&&!S.busy,g);await wait(1200,g);act('confirm')}await until(()=>(S.done||S.stopped)&&!S.busy,g);await wait(1200,g);await typeInto('好的，谢谢',g)}catch(e){if(!(e instanceof Abort))console.error(e)}}
+
+function setParam(k,v){const p=new URLSearchParams(location.search);if(v===null)p.delete(k);else p.set(k,v);const u=location.pathname+(p.toString()?'?'+p.toString():'')+location.hash;try{history.replaceState(null,'',u)}catch(e){}}
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+const TASKTONE={RUNNING:'t-info',WAITING_USER:'t-mute',READY:'t-warn',WAITING_EXTERNAL:'t-warn',HANDED_OFF:'t-bad',CLOSED:'t-mute'};
+const STATETONE={PREPARED:'t-info',SENT:'t-info',CONFIRMED:'t-ok',UNKNOWN:'t-warn',VERIFIED_DONE:'t-ok',VERIFIED_ABSENT:'t-warn',CANCELLED:'t-mute',REJECTED:'t-bad',HANDOFF:'t-bad'};
+
+function confCard(m){const c=S.conf;const active=S.pending&&S.pending.type==='confirm'&&m.extra.v===c.v&&!S.busy;const shown=m.extra.v===c.v?c:null;if(!shown)return `<div class="card"><span class="chip t-mute">确认 v${m.extra.v} 已作废</span></div>`;const p=shown.params;if(active&&S.editing)return `<div class="card"><div class="kv"><b>订单</b><span>${p.order}</span><b>商品</b><span>${esc(p.item)}</span><b>数量</b><span><select data-f="qty">${[1,2].map(n=>`<option ${n===p.qty?'selected':''}>${n}</option>`).join('')}</select></span><b>原因</b><span><select data-f="reason">${REASONS.map(r=>`<option ${r===p.reason?'selected':''}>${r}</option>`).join('')}</select></span><b>运费</b><span>¥${p.fee}</span></div><div style="display:flex;gap:6px;margin-top:8px"><button class="btn pri sm" data-act="submitModify">提交修改</button><button class="btn sm" data-act="cancelModify">取消</button></div></div>`;return `<div class="card"><div class="kv"><b>订单</b><span>${p.order}</span><b>商品</b><span>${esc(p.item)}</span><b>数量</b><span>${p.qty}</span><b>原因</b><span>${esc(p.reason)}</span><b>运费</b><span>¥${p.fee}</span></div><div style="display:flex;gap:6px;margin-top:8px;align-items:center">${active?`<button class="btn pri sm" data-act="confirm">确认提交</button><button class="btn sm" data-act="modify">修改</button>`:`<span class="chip ${shown.confirmed?'t-ok':(shown.valid?'t-info':'t-mute')}">${shown.confirmed?'已确认':(shown.valid?'待确认':'已作废')}</span>`}<span class="mono" style="color:var(--mute);margin-left:auto">v${shown.v} · ${shown.hash}</span></div></div>`}
+function choiceCard(){const active=S.pending&&S.pending.type==='choice'&&!S.busy;return `<div class="card">${ORDERS.map(o=>`<div class="opt"><span><b>${o.id}</b> · ${o.date} · ${esc(o.item)} · ${o.price}</span>${active?`<button class="btn sm" data-act="choose:${o.id}">选这笔</button>`:(S.order===o.id?'<span class="chip t-ok">已选</span>':'')}</div>`).join('')}</div>`}
+function msgsHTML(){let h='';for(const m of S.msgs){h+=`<div class="msg ${m.who}">${esc(m.text)}${m.extra&&m.extra.type==='choice'?choiceCard():''}${m.extra&&m.extra.type==='confirm'?confCard(m):''}</div>`}if(S.draft)h+=`<div class="msg draft ${S.draft.stale?'stale':''}">${esc(S.draft.text)}<span class="draft-tag">${S.draft.stale?'生成中断 · 等待新的尝试':'生成中 · 草稿（尝试 '+S.draft.attempt+'）'}</span></div>`;if(S.hint&&!S.draft)h+=`<div class="hint"><span class="dots"></span>${S.hint}</div>`;if(S.closed)h+=`<div class="hint">会话已结束</div>`;return h}
+function controlsHTML(big){if(env!=='exp')return '';const a=S.armed;const b=(k,label,sub,on)=>`<button class="cbtn ${on?'armed':''}" data-act="${k}">${label}${big?'':`<small>${on?'已就绪 · 再点取消':sub}</small>`}</button>`;return `<div class="exp-zone"><div class="exp-title"><span>实验环境 · 演示控制（正式实验只走命令行）</span><span>速度 ${[1,2,4].map(x=>`<button class="btn sm" data-act="speed:${x}" style="${speed===x?'font-weight:700':''}">${x}×</button>`).join(' ')}</span></div><div class="ctrl"><button class="cbtn go" data-act="auto">▶ 完整演示${big?'':'<small>自动走完退货，中途杀掉执行进程</small>'}</button>${b('kill','杀掉执行进程','运行中立即生效；空闲时在两次写入之间',a.kill)}${b('drop','丢弃写入响应','下一个写操作提交后断开连接',a.drop)}${b('zombie','假死 / 苏醒','下一个写操作 SENT 后暂停，完成后苏醒',a.zombie)}${b('mut:competing','插入他人申请','写1 前崩溃并改动业务状态',a.mut==='competing')}${b('mut:refunded','订单被退款','写1 前崩溃并改动业务状态',a.mut==='refunded')}${b('mut:fee','运费变化','写1 前崩溃并改动业务状态',a.mut==='fee')}<button class="cbtn" data-act="reset">重新开始${big?'':'<small>清空全部状态</small>'}</button></div></div>`}
+function dotTone(t){return{ok:'ok',warn:'warn',bad:'bad',mute:'mute',info:''}[t]||''}
+function intentsHTML(){if(!S.intents.length)return '<div style="color:var(--mute);font-size:12px">还没有写入意图</div>';return S.intents.map(it=>`<div class="intent"><div class="intent-h"><span>${it.label}</span><span class="chip ${STATETONE[it.state]}">${it.state}</span></div><div class="mono" style="color:var(--mute);margin-top:2px">${it.opId}${it.deadline!==null?' · 截止 '+fmt(it.deadline):''}${it.result?' · '+it.result:''}</div><div class="hist">${it.hist.map((x,i)=>`${i?'<span class="arrow">→</span>':''}<span class="chip ${STATETONE[x.s]}" title="${esc(x.note)}">${x.s}</span>`).join('')}</div></div>`).join('')}
+function invHTML(){const own=S.biz.as.filter(a=>a.own).length;const ship=S.biz.ship.length;return `<div class="inv"><span class="chip ${own<=1?'t-ok':'t-bad'}">本任务售后单 ${own}</span><span class="chip ${ship<=1?'t-ok':'t-bad'}">寄回单 ${ship}</span><span class="chip t-ok">无失效写入</span>${S.biz.rejected.length?`<span class="chip t-info">已拦截过期请求 ${S.biz.rejected.length}</span>`:''}</div>`}
+function bizHTML(){return `<div class="biz">${invHTML()}<table style="margin-top:6px"><tr><th>售后单</th><th>client_ref</th><th>状态</th><th>运费</th></tr>${S.biz.as.map(a=>`<tr><td>${a.id}</td><td class="mono">${esc(a.ref)}</td><td>${a.state}</td><td>¥${a.fee}</td></tr>`).join('')||'<tr><td colspan="4" style="color:var(--mute)">空</td></tr>'}</table><table style="margin-top:6px"><tr><th>寄回单</th><th>client_ref</th><th>关联</th></tr>${S.biz.ship.map(s=>`<tr><td>${s.id}</td><td class="mono">${s.ref}</td><td>${s.as}</td></tr>`).join('')||'<tr><td colspan="3" style="color:var(--mute)">空</td></tr>'}</table></div>`}
+function leaseText(){return S.lease.owner?`实例 ${S.lease.owner} · 版本 ${S.lease.version} · 剩余 ${S.lease.left}s`:`无持有者 · 版本 ${S.lease.version}${S.lease.left?' · 剩余 '+S.lease.left+'s':''}`}
+function envToggle(){return `<button class="btn sm" data-act="env" title="切换后演示控制会显示或隐藏">${env==='exp'?'实验环境':'生产环境'} ⇄</button>`}
+function chatForm(ph){return `<form class="chat-form" data-form="chat"><input id="chatInput" autocomplete="off" placeholder="${ph}"><button class="btn pri" type="submit">发送</button></form>`}
+function placeholder(){if(S.closed)return '会话已结束';if(S.busy)return 'Agent 正在处理…';if(S.pending&&S.pending.type==='choice')return '请在上方选择订单';if(S.pending&&S.pending.type==='confirm')return '请在上方确认或修改';return S.turn===0?'例如：我想退掉上周买的跑步鞋，尺码不合适':'继续提问，比如：退货进度怎么样了'}
+function syncInput(){const inp=document.getElementById('chatInput');if(!inp)return;inp.disabled=!canType();inp.placeholder=placeholder()}
+function stickBottom(el){if(el)el.scrollTop=el.scrollHeight}
+
+const V={};
+V.A={mount(root){root.innerHTML=`<div class="vA"><div class="top"><h1>售后 Agent · 工作台</h1><span id="aTask"></span><span id="aLease" class="chip"></span><span id="aCalls" class="chip"></span><span style="flex:1"></span>${envToggle()}</div><div class="strip" id="aCtrl"></div><div class="split"><section class="chat"><div class="chat-h"><span>对话工作台 · 顾客 C-88</span><button class="btn sm" data-act="close">结束会话</button></div><div class="msgs" id="aMsgs"></div>${chatForm('')}</section><section class="right"><div class="tl" id="aTl"></div><div class="lower"><div><h3>写入意图</h3><div class="intents" id="aInt"></div></div><div><h3>业务库</h3><div id="aBiz"></div></div></div></section></div></div>`},update(){q('aTask').innerHTML=`<span class="chip ${TASKTONE[S.task]}">任务 ${S.task}</span>`;q('aLease').textContent='租约：'+leaseText();q('aCalls').textContent=`模型调用 ${S.modelCalls} 次`;q('aCtrl').innerHTML=controlsHTML(false);q('aCtrl').style.display=env==='exp'?'':'none';q('aMsgs').innerHTML=msgsHTML();stickBottom(q('aMsgs'));q('aTl').innerHTML=`<h3>单任务执行时间线 · ${S.steps.length} 条事件</h3>`+S.steps.map(s=>`<div class="tl-item"><span class="tl-t">${fmt(s.t)}</span><span class="dot ${dotTone(s.tone)} ${s.live?'live':''}"></span><div><div class="tl-title">${esc(s.title)} <span class="chip t-mute">实例 ${s.inst}</span></div>${s.detail?`<div class="tl-detail">${esc(s.detail)}</div>`:''}</div></div>`).join('');stickBottom(q('aTl'));q('aInt').innerHTML=intentsHTML();q('aBiz').innerHTML=bizHTML()}};
+
+const LANES=['顾客','实例 1','实例 2','业务服务','执行库 · 租约'];
+function laneOf(s){if(s.kind==='user')return 0;if(s.kind==='biz')return 3;if(s.kind==='lease')return 4;return s.inst===1?1:2}
+const ORDER_STATES=['PREPARED','SENT','CONFIRMED','UNKNOWN','VERIFIED_DONE','VERIFIED_ABSENT','CANCELLED'];
+V.B={mount(root){root.innerHTML=`<div class="vB"><div class="top"><h1>任务 T-1 · 执行时间线</h1><span id="bTask"></span><span style="font-size:12px;color:var(--mute)">租约</span><div class="leasebar"><i id="bLease"></i></div><span id="bLeaseT" class="chip"></span><span id="bCalls" class="chip"></span><span style="flex:1"></span>${envToggle()}<button class="btn pri" data-act="drawer" id="bDrawerBtn">顾客对话</button></div><div class="lanes-wrap" id="bWrap"><div class="lanes" id="bLanes"></div></div><div class="board"><div><div class="sm-title">写入意图状态机</div><div id="bInt" style="display:grid;gap:8px"></div></div><div><div class="sm-title">业务库</div><div id="bBiz"></div></div><div id="bCtrl"></div></div><div class="drawer" id="bDrawer"><div class="drawer-h"><span>对话工作台 · 顾客 C-88</span><span><button class="btn sm" data-act="close">结束会话</button> <button class="btn sm" data-act="drawer">收起</button></span></div><div class="msgs" id="bMsgs"></div>${chatForm('')}</div></div>`},update(){q('bTask').innerHTML=`<span class="chip ${TASKTONE[S.task]}">${S.task}</span>`;q('bLease').style.width=(S.lease.left*10)+'%';q('bLease').style.background=S.lease.owner?'var(--ok)':'var(--warn)';q('bLeaseT').textContent=leaseText();q('bCalls').textContent=`模型调用 ${S.modelCalls}`;const agentCount=S.msgs.filter(m=>m.who==='agent').length;if(drawerOpen)seenAgent=agentCount;const unread=agentCount-seenAgent;q('bDrawerBtn').innerHTML=`顾客对话${unread>0?`<span class="badge">${unread}</span>`:''}`;q('bDrawer').classList.toggle('open',drawerOpen);document.querySelector('.vB').classList.toggle('drawer-on',drawerOpen);const n=Math.max(S.steps.length,6);const lanes=q('bLanes');lanes.style.gridTemplateColumns=`170px repeat(${n},156px)`;let h='';LANES.forEach((l,i)=>{h+=`<div class="lane-l" style="grid-row:${i+1};grid-column:1"><span>${l}${i===1||i===2?`<br><span class="chip ${S.inst[i]==='执行中'?'t-ok':(String(S.inst[i]).includes('SIGKILL')?'t-bad':(String(S.inst[i]).includes('假死')?'t-warn':'t-mute'))}">${S.inst[i]}</span>`:''}</span></div>`;for(let c=2;c<=n+1;c++)h+=`<div class="cell" style="grid-row:${i+1};grid-column:${c}"></div>`});S.steps.forEach((s,i)=>{h+=`<div class="cell" style="grid-row:${laneOf(s)+1};grid-column:${i+2}"><div class="ev ${s.tone} ${s.live?'live':''}"><span class="n">#${s.n} · ${fmt(s.t)}</span><b>${esc(s.title)}</b>${s.detail?esc(s.detail):''}</div></div>`});lanes.innerHTML=h;const w=q('bWrap');w.scrollLeft=w.scrollWidth;q('bInt').innerHTML=S.intents.length?S.intents.map(it=>{const seen=new Set(it.hist.map(x=>x.s));const path=ORDER_STATES.filter(s=>seen.has(s)||['PREPARED','SENT','CONFIRMED'].includes(s));return `<div class="intent"><div class="intent-h"><span>${it.label}</span><span class="mono" style="color:var(--mute)">${it.opId}</span></div><div class="stepper">${path.map(s=>{const cls=s===it.state?(STATETONE[s]==='t-ok'?'ok':STATETONE[s]==='t-warn'?'warn':STATETONE[s]==='t-bad'?'bad':'on'):(seen.has(s)?'on':'');return `<span class="s ${cls}">${s}</span>`}).join('')}</div><div style="font-size:12px;color:var(--mute);margin-top:4px">${esc((it.hist[it.hist.length-1]||{}).note||'')}</div></div>`}).join(''):'<div style="color:var(--mute);font-size:12px">还没有写入意图</div>';q('bBiz').innerHTML=bizHTML();q('bCtrl').innerHTML=controlsHTML(false);q('bCtrl').style.display=env==='exp'?'':'none';q('bMsgs').innerHTML=msgsHTML();stickBottom(q('bMsgs'))}};
+
+function instCls(st){st=String(st);if(st==='执行中')return 'run';if(st.includes('SIGKILL'))return 'dead';if(st.includes('假死')||st.includes('苏醒'))return 'pause';return ''}
+V.C={mount(root){root.innerHTML=`<div class="vC"><div><div class="top-r" style="margin-bottom:10px"><h1>答辩演示 · 售后 Agent 故障恢复</h1><span style="display:flex;gap:8px;align-items:center"><span id="cTask"></span>${envToggle()}</span></div><div class="phases" id="cPh"></div></div><div class="stage"><div class="col"><h2>顾客看到的</h2><div class="phone"><div class="msgs" id="cMsgs"></div>${chatForm('')}</div></div><div class="col"><h2>系统内部</h2><div class="insts" id="cInst"></div><div class="now" id="cNow"></div><div class="ticker" id="cTick"></div></div><div class="col"><h2>业务库的真相</h2><div class="big" id="cBig"></div><div class="pills" id="cPills"></div><div class="records" id="cRec"></div></div></div><div class="caption" id="cCap"></div><div id="cCtrl"></div></div>`},update(){q('cTask').innerHTML=`<span class="chip ${TASKTONE[S.task]}">任务 ${S.task}</span> <span class="chip">模型调用 ${S.modelCalls}</span>`;q('cPh').innerHTML=PHASES.map((p,i)=>`<div class="ph ${i<S.phase||(S.done&&i===5)?'done':(i===S.phase?'cur':'')}">${p}</div>`).join('');q('cMsgs').innerHTML=msgsHTML();stickBottom(q('cMsgs'));q('cInst').innerHTML=[1,2].map(i=>`<div class="inst ${S.lease.owner===i?'owner':''}"><h3><span class="light ${instCls(S.inst[i])}"></span>执行实例 ${i}</h3><div class="st">${S.inst[i]}${S.lease.owner===i?' · 持有租约 v'+S.lease.version:''}</div><div class="lease"><i style="width:${S.lease.owner===i||(!S.lease.owner&&S.lease.left)?S.lease.left*10:0}%;background:${S.lease.owner===i?'#35d07f':'#ffb020'}"></i></div></div>`).join('');const last=S.steps[S.steps.length-1];q('cNow').innerHTML=last?`<div class="k">刚刚发生 · ${fmt(last.t)} · 实例 ${last.inst}</div><div class="v">${esc(last.title)}</div><div class="d">${esc(last.detail||'')}</div>`:'<div class="k">等待开始</div><div class="v">点「完整演示」或在手机里输入</div>';q('cTick').innerHTML=S.steps.slice(-8,-1).reverse().map(s=>`<div class="tk"><span class="mono">${fmt(s.t)}</span><span class="chip ${'t-'+(s.tone==='mute'?'info':s.tone)}">${s.kind}</span><span>${esc(s.title)}</span></div>`).join('');const own=S.biz.as.filter(a=>a.own).length;const ship=S.biz.ship.length;q('cBig').innerHTML=`<div class="num ${own<=1?'good':'bad'}"><div class="n">${own}</div><div class="l">本任务售后单 ${own<=1?'· 无重复':'· 重复！'}</div></div><div class="num ${ship<=1?'good':'bad'}"><div class="n">${ship}</div><div class="l">寄回单 ${ship<=1?'· 无重复':'· 重复！'}</div></div>`;q('cPills').innerHTML=S.intents.map(it=>`<div class="pill">${it.label}<span class="s chip ${STATETONE[it.state]}">${it.state}</span><div class="mono" style="color:#5f6886;margin-top:4px">${it.hist.map(x=>x.s).join(' → ')}</div></div>`).join('')||'<div class="pill" style="color:#8f98b3">还没有写入意图</div>';q('cRec').innerHTML=S.biz.as.map(a=>`<div>${a.id} · ${a.state} · client_ref <span class="mono">${esc(a.ref)}</span></div>`).join('')+S.biz.ship.map(s=>`<div>${s.id} · 关联 ${s.as}</div>`).join('')+(S.biz.rejected.length?`<div style="color:#7fe0a6">已拦截过期请求 ${S.biz.rejected.length} 次</div>`:'');q('cCap').innerHTML=esc(S.caption)+`<small>${S.busy?'处理中':(S.closed?'会话已结束':'等待顾客')}</small>`;q('cCtrl').innerHTML=controlsHTML(true);q('cCtrl').style.display=env==='exp'?'':'none'}};
+
+function q(id){return document.getElementById(id)}
+let mounted=null;
+function mount(){const root=q('app');V[variant].mount(root);mounted=variant;q('swLab').textContent=`${variant} · ${VARIANTS.find(v=>v.k===variant).name}`;render()}
+function render(){if(!S||mounted!==variant)return;V[variant].update();syncInput();let t=document.querySelector('.toast');if(S.toast){if(!t){t=document.createElement('div');t.className='toast';document.body.appendChild(t)}t.textContent=S.toast}else if(t)t.remove()}
+function go(d){const i=VARIANTS.findIndex(v=>v.k===variant);variant=VARIANTS[(i+d+VARIANTS.length)%VARIANTS.length].k;setParam('variant',variant);mount()}
+document.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(el){e.preventDefault();act(el.dataset.act,el)}});
+document.addEventListener('submit',e=>{const f=e.target.closest('[data-form=chat]');if(!f)return;e.preventDefault();const inp=f.querySelector('input');const v=inp.value;inp.value='';onSend(v)});
+document.addEventListener('keydown',e=>{const tg=e.target;if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.tagName==='SELECT'||tg.isContentEditable))return;if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1)});
+q('swPrev').onclick=()=>go(-1);q('swNext').onclick=()=>go(1);
+S=fresh();mount();
+if(qs.get('auto'))autoplay(qs.get('auto'));
+</script>
+</body>
+</html>
