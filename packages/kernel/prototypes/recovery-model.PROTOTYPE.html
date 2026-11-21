@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>恢复状态模型原型</title>
+<style>
+:root{--bg:#fafaf9;--card:#fff;--ink:#1c1917;--muted:#78716c;--line:#e7e5e4;--accent:#2563eb;--accent-soft:#eff6ff;--ok:#15803d;--ok-soft:#f0fdf4;--bad:#b91c1c;--bad-soft:#fef2f2;--warn:#a16207;--warn-soft:#fefce8}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+header{padding:24px 28px 8px}
+h1{font-size:22px;margin:0 0 6px}
+h2{font-size:15px;margin:0 0 10px}
+h3{font-size:13px;margin:12px 0 6px;color:var(--muted);font-weight:600}
+.intro{color:var(--muted);max-width:980px;margin:0}
+.wrap{display:grid;grid-template-columns:minmax(360px,440px) 1fr;gap:18px;padding:12px 28px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 10px;cursor:pointer;color:var(--ink)}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button:disabled{opacity:.4;cursor:default;border-color:var(--line);color:var(--ink)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.primary:hover{color:#fff;filter:brightness(1.08)}
+button.danger:hover{border-color:var(--bad);color:var(--bad)}
+select{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+label.tog{display:flex;gap:6px;align-items:flex-start;font-size:13px;margin:4px 0}
+label.tog input{margin-top:3px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.tabs button{font-size:12px;padding:4px 8px}
+.tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.steps{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.steps button{text-align:left;display:flex;gap:8px;align-items:flex-start}
+.steps button .n{flex:none;width:20px;height:20px;border-radius:50%;background:var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+.steps button.next{border-color:var(--accent);background:var(--accent-soft)}
+.steps button.next .n{background:var(--accent);color:#fff}
+.steps button.done .n{background:var(--ok);color:#fff}
+.explain{background:var(--accent-soft);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:13px;white-space:pre-wrap}
+.desc{font-size:13px;color:var(--ink);white-space:pre-wrap}
+.watch{font-size:12px;color:var(--muted);margin-top:6px;white-space:pre-wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv div:nth-child(odd){color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.pill{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line);background:#fff}
+.pill.ok{background:var(--ok-soft);color:var(--ok);border-color:#bbf7d0}
+.pill.bad{background:var(--bad-soft);color:var(--bad);border-color:#fecaca}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:#fde68a}
+.pill.blue{background:var(--accent-soft);color:var(--accent);border-color:#bfdbfe}
+.inv{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;border-radius:7px;margin-bottom:4px;font-size:13px}
+.inv.ok{background:var(--ok-soft)}
+.inv.bad{background:var(--bad-soft);color:var(--bad);font-weight:600}
+.inv.na{background:#f5f5f4;color:var(--muted)}
+.just{background:var(--warn-soft);border:1px solid #fde68a;border-radius:8px;padding:8px 10px;font-size:13px}
+.just div{margin:2px 0}
+.log{max-height:260px;overflow:auto;font-size:12px}
+.log div{padding:2px 0;border-bottom:1px dashed var(--line)}
+.t{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:6px}
+.chat div{margin:4px 0}
+.who{font-weight:600;margin-right:6px}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>恢复状态模型原型（PROTOTYPE，一次性）</h1>
+<p class="intro">要回答的问题：售后 Agent 的执行内核在任务执行中途出故障后，按"按步骤日志重建 → 核验结果未知的写入 → 复查易变读 → 由业务规则给出处置"的顺序恢复，配合租约版本校验和写请求处理时限 Δ，能否在各实验组和各类故障下做到不重复写入、不按失效条件写入？原型发现的修正项（P1 售后规则易变与运费校验、P2 按 client_ref 识别本任务写入、P3 补全写入意图状态转换）是否真的改变结果？<br>用法：左侧"引导场景"每个标签是一个难以在纸面推演的情况，选好对照组后按顺序点按钮；也可以在"自由操作"里任意组合顾客动作、时间推进和故障。右侧状态在每次点击后刷新，黄色框列出刚刚发生的事。全部在内存中模拟，时间是模拟时钟。</p>
+</header>
+
+<div class="wrap">
+<div>
+<div class="card">
+<h2>引导场景</h2>
+<div class="tabs" id="tabs"></div>
+<div id="tabBody"></div>
+</div>
+
+<div class="card">
+<h2>设置（修改后重置模拟）</h2>
+<div class="row" style="margin-bottom:6px">
+<span class="small muted">实验组</span>
+<select id="cfgArm">
+<option value="B">B 调用级检查点恢复</option>
+<option value="A">A 轮次级重跑</option>
+<option value="C">C 故障即转人工</option>
+<option value="B-verify">B−核验（消融）</option>
+<option value="B-recheck">B−复查（消融）</option>
+</select>
+<span class="small muted">业务服务</span>
+<select id="cfgMode">
+<option value="idem">幂等 key 模式</option>
+<option value="nonidem">无幂等、可按 client_ref 查询</option>
+</select>
+</div>
+<label class="tog"><input type="checkbox" id="cfgDelta" checked><span>写请求处理时限 Δ（截止时刻随请求发出，业务服务在提交时拒绝过期请求）</span></label>
+<label class="tog"><input type="checkbox" id="cfgRules"><span>P1：售后规则按"易变"标注（复查时重新查询运费）</span></label>
+<label class="tog"><input type="checkbox" id="cfgFee"><span>P1：业务服务校验确认过的运费，不一致返回 FEE_CHANGED</span></label>
+<label class="tog"><input type="checkbox" id="cfgOwn"><span>P2：复查时按 client_ref 识别本任务自己的写入</span></label>
+<label class="tog"><input type="checkbox" id="cfgFull"><span>P3：补全写入意图状态转换（503 回到 PREPARED、过期换新截止时刻重发、拒绝进入 REJECTED、停止进入 CANCELLED、参数不一致转人工）</span></label>
+<div class="row" style="margin-top:6px"><button class="primary" id="btnReset">按当前设置重置</button></div>
+</div>
+
+<div class="card">
+<h2>自由操作</h2>
+<h3>顾客</h3>
+<div class="row">
+<button data-act="start">发起退货</button>
+<button data-act="confirm">确认</button>
+<button data-act="changeReason">修改退货原因</button>
+<button data-act="close">结束会话</button>
+</div>
+<h3>执行与时间</h3>
+<div class="row">
+<button data-act="step" class="primary">推进一步</button>
+<button data-act="runToIdle">推进到本轮停下</button>
+<button data-act="expireLease">时间前进到租约过期</button>
+<button data-act="adv1s">+1 秒</button>
+<button data-act="adv10s">+10 秒</button>
+<button data-act="adv20s">+20 秒</button>
+<button data-act="adv1h">+1 小时</button>
+</div>
+<h3>执行进程故障（发生在当前停下的故障点）</h3>
+<div class="row">
+<button data-act="crash" class="danger">执行实例崩溃（SIGKILL）</button>
+<button data-act="pause" class="danger">执行实例假死（SIGSTOP）</button>
+<button data-act="resume">唤醒假死实例（SIGCONT）</button>
+</div>
+<h3>业务服务故障（作用于下一次对应写请求）</h3>
+<div class="row">
+<button data-act="dropW1" class="danger">写1 提交后丢失响应</button>
+<button data-act="dropW2" class="danger">写2 提交后丢失响应</button>
+<button data-act="delayW1" class="danger">写1 延迟 20 秒到达</button>
+<button data-act="delayW2" class="danger">写2 延迟 20 秒到达</button>
+</div>
+<div class="row" style="margin-top:6px">
+<button data-act="out10s" class="danger">从现在起 503 持续 10 秒</button>
+<button data-act="out3h" class="danger">503 持续 3 小时</button>
+<button data-act="out7h" class="danger">503 持续 7 小时</button>
+</div>
+<h3>故障期间业务状态被他人改变</h3>
+<div class="row">
+<button data-act="mCompeting" class="danger">他人提交了该商品的申请</button>
+<button data-act="mRefunded" class="danger">订单被退款</button>
+<button data-act="mFee" class="danger">退货运费改为 12 元</button>
+</div>
+</div>
+</div>
+
+<div>
+<div class="card"><h2>刚刚发生了什么</h2><div id="just" class="just"></div></div>
+<div class="grid" id="panels"></div>
+</div>
+</div>
+
+<script>
+const RecoveryModel = (() => {
+  const LEASE = 10000
+  const DELTA = 5000
+  const MARGIN = 2000
+  const CLIENT_TIMEOUT = 3000
+  const NET = 50
+  const MAX_WAIT = 6 * 3600000
+  const RESTART = 3000
+  const WATCHDOG = 1000
+  const DONE = new Set(['CONFIRMED', 'VERIFIED_DONE'])
+  const INTERACTION = new Set(['ask_user', 'request_confirmation'])
+  const VOLATILE_BASE = new Set(['query_order', 'query_aftersales'])
+  const OP_LABEL = { create_aftersales: '写1 创建售后单', create_shipment: '写2 生成寄回单' }
+  const TOOL_LABEL = { query_order: '查询订单', query_aftersales: '查询售后单', query_rules: '查询售后规则', request_confirmation: '请求确认', ask_user: '追问顾客', submit_return: '提交退货' }
+
+  const canon = v => {
+    if (v === null || typeof v !== 'object') return JSON.stringify(v)
+    if (Array.isArray(v)) return '[' + v.map(canon).join(',') + ']'
+    return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}'
+  }
+  const h = v => {
+    const str = canon(v)
+    let x = 0x811c9dc5
+    for (let i = 0; i < str.length; i++) { x ^= str.charCodeAt(i); x = Math.imul(x, 0x01000193) >>> 0 }
+    return x.toString(16).padStart(8, '0')
+  }
+  const fmt = ms => {
+    if (!isFinite(ms)) return '∞'
+    const s = ms / 1000
+    const hh = Math.floor(s / 3600)
+    const mm = Math.floor((s % 3600) / 60)
+    const ss = (s % 60).toFixed(1).padStart(4, '0')
+    return `${hh}:${String(mm).padStart(2, '0')}:${ss}`
+  }
+
+  class ExternalWait extends Error {}
+  class HandoffNow extends Error {}
+  class Fenced extends Error {}
+
+  function create(cfg) {
+    const s = {
+      cfg: { ...cfg },
+      now: 0,
+      task: { state: 'NEW', owner: null, leaseUntil: 0, version: 0, needsRecovery: false, turn: 0, externalSince: 0, probeDelay: 60000, nextProbe: 0, notified: false },
+      instances: [{ id: 'E1', status: 'idle', version: 0, gen: null, restartAt: 0, point: null }, { id: 'E2', status: 'idle', version: 0, gen: null, restartAt: 0, point: null }],
+      steps: [],
+      intents: [],
+      confirmations: [],
+      chat: [],
+      messageKeys: new Set(),
+      notes: [],
+      handoffPkg: null,
+      counters: { modelCalls: 0, readReruns: 0, fenced: 0, takeovers: 0, reconfirms: 0, staleRejected: 0, dupMsgPrevented: 0 },
+      bs: { refunded: false, fee: 8, aftersales: [], shipments: [], keys: new Map(), outages: [], inflight: [], nextDrop: new Set(), nextDelay: new Map(), staleWrites: 0 },
+      turnInputs: {},
+      reason: '尺码不合适',
+      log: [],
+      lastEvents: [],
+      lastPoint: null,
+    }
+
+    const log = text => { s.log.push({ t: s.now, text }) }
+    const P = (point, desc, op) => ({ point, desc, op: op || null })
+    const intent = opId => s.intents.find(i => i.opId === opId)
+    const ownerInst = () => s.instances.find(i => i.id === s.task.owner)
+    const ownerAlive = () => { const o = ownerInst(); return !!o && o.status === 'running' }
+    const activeInst = () => s.instances.find(i => i.status === 'running' && i.gen && i.id === s.task.owner && i.version === s.task.version)
+    const down = t => s.bs.outages.some(([a, b]) => t >= a && t < b)
+    const isVolatile = name => VOLATILE_BASE.has(name) || (name === 'query_rules' && s.cfg.rulesVolatile)
+    const stepAt = (turn, k) => s.steps.find(x => x.turn === turn && x.k === k && !x.discarded)
+    const validConfirmed = () => [...s.confirmations].reverse().find(c => c.confirmed && c.valid)
+    const ourAftersales = () => s.bs.aftersales.filter(a => a.clientRef !== null)
+    const lastAgentText = () => { const m = [...s.chat].reverse().find(c => c.who === 'Agent'); return m ? m.text : '' }
+
+    function persist(inst, f) {
+      if (s.task.owner !== inst.id || s.task.version !== inst.version) {
+        s.counters.fenced++
+        log(`执行实例 ${inst.id} 的检查点写入被版本校验拒绝：它持有版本 ${inst.version}，任务当前版本 ${s.task.version}，持有者 ${s.task.owner || '无'}`)
+        throw new Fenced()
+      }
+      f()
+      s.task.leaseUntil = s.now + LEASE
+    }
+
+    function process(f) {
+      const req = f.req
+      const bs = s.bs
+      if (down(s.now)) { f.result = { status: 503 }; log(`业务服务不可用，${OP_LABEL[req.op]} 返回 503（未处理）`); return }
+      if (req.deadline !== null && s.now > req.deadline) {
+        f.result = { status: 422, code: 'DEADLINE_EXCEEDED' }
+        s.counters.staleRejected++
+        log(`业务服务在提交时发现 ${OP_LABEL[req.op]} 已过截止时刻 ${fmt(req.deadline)}，拒绝且不提交`)
+        return
+      }
+      const ph = h(req.params)
+      if (s.cfg.mode === 'idem') {
+        const e = bs.keys.get(req.opId)
+        if (e) {
+          f.result = e.paramsHash === ph ? e.result : { status: 422, code: 'IDEMPOTENCY_KEY_PARAMETER_MISMATCH' }
+          log(e.paramsHash === ph ? `幂等 key 命中，${OP_LABEL[req.op]} 返回原结果 ${e.result.body.id}，没有重复创建` : `幂等 key 相同但参数不同：IDEMPOTENCY_KEY_PARAMETER_MISMATCH`)
+          return
+        }
+      }
+      let result
+      if (req.op === 'create_aftersales') {
+        const p = req.params
+        if (bs.refunded) result = { status: 422, code: 'ORDER_REFUNDED' }
+        else if (s.cfg.serverChecksFee && p.fee !== bs.fee) result = { status: 422, code: 'FEE_CHANGED' }
+        else if (bs.aftersales.some(a => a.open && a.lineItemId === p.lineItemId)) result = { status: 422, code: 'OPEN_APPLICATION_EXISTS' }
+        else {
+          const id = 'AS-' + h([req.opId, bs.aftersales.length]).slice(0, 6)
+          if (p.fee !== bs.fee) { bs.staleWrites++; log(`业务服务按旧运费 ${p.fee} 元创建了售后单（当前运费 ${bs.fee} 元）：失效写入`) }
+          bs.aftersales.push({ id, clientRef: req.opId, lineItemId: p.lineItemId, qty: p.qty, fee: p.fee, open: true, at: s.now })
+          result = { status: 200, body: { id } }
+        }
+      } else {
+        const asId = String(req.params.aftersalesId)
+        if (!bs.aftersales.some(a => a.id === asId)) result = { status: 422, code: 'NO_AFTERSALES' }
+        else {
+          const id = 'RS-' + h([req.opId, bs.shipments.length]).slice(0, 6)
+          bs.shipments.push({ id, clientRef: req.opId, aftersalesId: asId, at: s.now })
+          result = { status: 200, body: { id } }
+        }
+      }
+      if (s.cfg.mode === 'idem' && result.status === 200) bs.keys.set(req.opId, { paramsHash: ph, result })
+      log(result.status === 200 ? `业务服务提交 ${OP_LABEL[req.op]}：${result.body.id}` : `业务服务拒绝 ${OP_LABEL[req.op]}：${result.code}`)
+      f.result = result
+    }
+
+    function find(op, clientRef) {
+      if (down(s.now)) return 'unavailable'
+      const r = op === 'create_aftersales' ? s.bs.aftersales.find(a => a.clientRef === clientRef) : s.bs.shipments.find(x => x.clientRef === clientRef)
+      return r ? { id: r.id } : null
+    }
+
+    function read(name) {
+      if (down(s.now)) return 'unavailable'
+      if (name === 'query_order') return { refunded: s.bs.refunded, items: [{ id: 'L1', qty: 1 }] }
+      if (name === 'query_aftersales') return { list: s.bs.aftersales.filter(a => a.lineItemId === 'L1').map(a => ({ id: a.id, open: a.open, clientRef: a.clientRef })) }
+      return { fee: s.bs.fee }
+    }
+
+    function handoff(reason) {
+      for (const it of s.intents) if (it.state === 'SENT' || it.state === 'UNKNOWN') runSync(verify(null, it))
+      s.handoffPkg = { reason, at: s.now, intents: s.intents.map(i => ({ op: i.op, opId: i.opId, state: i.state, result: i.result ? i.result.id : null })) }
+      s.task.state = 'HANDED_OFF'
+      s.task.owner = null
+      s.chat.push({ who: '系统', text: '已转交人工客服处理' })
+      log(`转人工：${reason}，已生成交接信息`)
+    }
+
+    function probe() {
+      if (s.now - s.task.externalSince > MAX_WAIT) { handoff('等待外部服务超过 6 小时'); return }
+      if (!down(s.now)) {
+        s.task.state = 'READY'
+        s.task.needsRecovery = true
+        log('调度器探测到业务服务已恢复，任务回到待执行，需要先恢复')
+        return
+      }
+      s.task.probeDelay = Math.min(s.task.probeDelay * 2, 30 * 60000)
+      s.task.nextProbe = s.now + s.task.probeDelay
+      log(`调度器探测：业务服务仍不可用，下次探测在 ${fmt(s.task.nextProbe)}`)
+    }
+
+    function advanceTo(t) {
+      for (let guard = 0; guard < 20000; guard++) {
+        const cands = []
+        for (const f of s.bs.inflight) if (f.result === null && f.arriveAt <= t) cands.push({ at: f.arriveAt, run: () => { process(f); f.respondAt = f.drop ? Infinity : s.now + NET; if (f.drop && f.result) log(`连接在业务服务提交后断开，${OP_LABEL[f.req.op]} 的响应丢失`) } })
+        if (s.task.state === 'WAITING_EXTERNAL' && s.task.nextProbe <= t) cands.push({ at: s.task.nextProbe, run: probe })
+        for (const i of s.instances) if (i.status === 'dead' && i.restartAt <= t) cands.push({ at: i.restartAt, run: () => { i.status = 'idle'; i.gen = null; i.point = null; log(`执行实例 ${i.id} 的容器按重启策略重新拉起，成为空闲实例`) } })
+        if (s.task.state === 'RUNNING' && !ownerAlive() && s.task.leaseUntil + WATCHDOG <= t) cands.push({ at: s.task.leaseUntil + WATCHDOG, run: watchdog })
+        if (!cands.length) break
+        cands.sort((a, b) => a.at - b.at)
+        s.now = Math.max(s.now, cands[0].at)
+        cands[0].run()
+      }
+      s.now = Math.max(s.now, t)
+      if (s.task.state === 'RUNNING' && ownerAlive()) s.task.leaseUntil = s.now + LEASE
+    }
+
+    function watchdog() {
+      log(`看门狗发现租约已过期（lease_until ${fmt(s.task.leaseUntil)}，持有者 ${s.task.owner}）`)
+      if (s.cfg.arm === 'C') { handoff('执行进程崩溃'); return }
+      s.task.state = 'READY'
+      s.task.owner = null
+      s.task.needsRecovery = true
+    }
+
+    function call(req) {
+      const delay = s.bs.nextDelay.get(req.op) || 0
+      s.bs.nextDelay.delete(req.op)
+      const drop = s.bs.nextDrop.delete(req.op)
+      const f = { req, sentAt: s.now, arriveAt: s.now + NET + delay, respondAt: Infinity, result: null, drop }
+      s.bs.inflight.push(f)
+      if (delay) log(`${OP_LABEL[req.op]} 在网络中被延迟，将于 ${fmt(f.arriveAt)} 才到达业务服务`)
+      const timeoutAt = s.now + CLIENT_TIMEOUT
+      advanceTo(Math.min(f.arriveAt, timeoutAt))
+      if (f.result && f.respondAt <= timeoutAt) { advanceTo(f.respondAt); return f.result }
+      advanceTo(timeoutAt)
+      return { status: 'timeout' }
+    }
+
+    function runSync(gen) { let r; do { r = gen.next() } while (!r.done); return r.value }
+
+    function setIntent(inst, it, state, extra, add) {
+      const apply = () => {
+        Object.assign(it, extra || {})
+        it.state = state
+        it.history.push(`${fmt(s.now)} ${state}`)
+        if (add) s.intents.push(it)
+      }
+      if (inst) persist(inst, apply)
+      else apply()
+    }
+
+    function* verify(inst, it) {
+      if (it.deadline !== null) {
+        const until = it.deadline + MARGIN
+        if (s.now < until) {
+          yield P('verify_waiting', `等到截止时刻 ${fmt(it.deadline)} 加余量（${fmt(until)}）之后才核验 ${OP_LABEL[it.op]}`, it.op)
+          advanceTo(until)
+        }
+      }
+      for (let i = 0; i < 3; i++) {
+        const r = find(it.op, it.opId)
+        if (r !== 'unavailable') {
+          setIntent(inst, it, r ? 'VERIFIED_DONE' : 'VERIFIED_ABSENT', { result: r })
+          log(`核验 ${OP_LABEL[it.op]}：${r ? '已生效 ' + r.id + '，复用原结果' : '未生效，可以用原操作标识重试'}`)
+          if (inst) yield P('after_verified', `核验完成：${it.state}`, it.op)
+          return r ? 'done' : 'absent'
+        }
+        advanceTo(s.now + 2000 * (i + 1))
+      }
+      setIntent(inst, it, 'HANDOFF')
+      log(`核验 ${OP_LABEL[it.op]}：业务服务不可用，无法判断`)
+      return 'handoff'
+    }
+
+    function* sendOp(inst, it) {
+      let backoff = 1000
+      let unavailable = 0
+      let resend = false
+      const full = s.cfg.fullTransitions
+      for (let attempt = 0; attempt < 8; attempt++) {
+        if (!resend && it.state !== 'PREPARED') setIntent(inst, it, 'PREPARED')
+        if (!resend) yield P('after_prepared', `写入意图 ${OP_LABEL[it.op]} 已记为 PREPARED`, it.op)
+        resend = false
+        setIntent(inst, it, 'SENT', { deadline: s.now + DELTA })
+        const req = { op: it.op, opId: it.opId, params: { ...it.params }, deadline: s.cfg.delta ? it.deadline : null }
+        yield P('after_sent_before_send', `写入意图 ${OP_LABEL[it.op]} 已记为 SENT，截止时刻 ${fmt(it.deadline)}，请求已在内存中构造、即将发出`, it.op)
+        const resp = call(req)
+        if (resp.status === 200) {
+          setIntent(inst, it, 'CONFIRMED', { result: { id: String(resp.body.id) } })
+          yield P('after_write_confirmed', `${OP_LABEL[it.op]} 成功：${resp.body.id}，写入意图记为 CONFIRMED`, it.op)
+          return 'done'
+        }
+        const unknownPath = function* (why) {
+          setIntent(inst, it, 'UNKNOWN')
+          yield P('after_unknown', `${OP_LABEL[it.op]} ${why}，写入意图记为 UNKNOWN`, it.op)
+          if (s.cfg.arm === 'C') throw new HandoffNow('写入结果不确定')
+          if (s.cfg.arm === 'B-verify') { log('消融：不核验，直接用原操作标识重试'); return 'retry' }
+          const v = yield* verify(inst, it)
+          if (v === 'handoff') throw new HandoffNow('无法判断写入结果')
+          return v === 'done' ? 'done' : 'retry'
+        }
+        if (resp.status === 'timeout') {
+          const r = yield* unknownPath('等待响应超时，结果未知')
+          if (r === 'done') return 'done'
+          continue
+        }
+        if (resp.status === 503) {
+          unavailable++
+          if (full) {
+            setIntent(inst, it, 'PREPARED')
+            log(`503 表示业务服务未处理，写入意图回到 PREPARED（第 ${unavailable} 次）`)
+            if (unavailable > 3) {
+              if (s.cfg.arm === 'C') throw new HandoffNow('重试用尽')
+              throw new ExternalWait()
+            }
+            advanceTo(s.now + backoff)
+            backoff *= 2
+            resend = false
+            continue
+          }
+          log('未补全转换：503 被当作结果未知处理')
+          const r = yield* unknownPath('返回 503')
+          if (r === 'done') return 'done'
+          continue
+        }
+        if (resp.code === 'DEADLINE_EXCEEDED') {
+          if (full) { log('截止时刻已过、确定未提交：换新的截止时刻重发'); resend = true; continue }
+          const r = yield* unknownPath('因过期被拒绝')
+          if (r === 'done') return 'done'
+          continue
+        }
+        if (resp.code === 'IDEMPOTENCY_KEY_PARAMETER_MISMATCH') {
+          if (full) { setIntent(inst, it, 'HANDOFF'); throw new HandoffNow('幂等 key 参数不一致') }
+          it.code = resp.code
+          log('未补全转换：参数不一致后写入意图仍停在 SENT')
+          return 'rejected'
+        }
+        it.code = resp.code
+        if (full) setIntent(inst, it, 'REJECTED')
+        else log('未补全转换：被业务拒绝后写入意图仍停在 SENT')
+        return 'rejected'
+      }
+      throw new HandoffNow('写操作重试次数过多')
+    }
+
+    function opIds(p) {
+      const first = h(['T1', 'create_aftersales', p.orderId, p.lineItemId])
+      return [first, h([first, 'create_shipment'])]
+    }
+
+    function* submitReturn(inst, p) {
+      const ph = h(p)
+      const conf = validConfirmed()
+      const [id1, id2] = opIds(p)
+      const ops = [['create_aftersales', id1], ['create_shipment', id2]]
+      const pending = ops.some(([, id]) => { const it = intent(id); return !it || !DONE.has(it.state) })
+      if (pending && (!conf || conf.hash !== ph)) {
+        log('确认检查：没有与参数哈希一致的有效确认，提交退货被拒绝，请求不发往业务服务')
+        return { error: '需要用户确认' }
+      }
+      const ids = []
+      for (const [op, opId] of ops) {
+        let it = intent(opId)
+        const params = op === 'create_aftersales' ? { ...p } : { aftersalesId: ids[0] }
+        if (it && DONE.has(it.state)) { ids.push(it.result.id); log(`${OP_LABEL[op]} 已完成，直接复用 ${it.result.id}`); continue }
+        if (it && it.state === 'CANCELLED') return { error: '已停止' }
+        if (it && it.state === 'REJECTED') return { error: '业务拒绝', code: it.code }
+        if (it && it.state === 'HANDOFF') throw new HandoffNow('写入意图已转人工')
+        if (it && (it.state === 'SENT' || it.state === 'UNKNOWN')) {
+          if (s.cfg.arm === 'B-verify') log(`消融：不核验，直接用原操作标识重发 ${OP_LABEL[op]}`)
+          else {
+            const v = yield* verify(inst, it)
+            if (v === 'done') { ids.push(it.result.id); continue }
+            if (v === 'handoff') throw new HandoffNow('无法判断写入结果')
+          }
+        }
+        if (!it) {
+          it = { opId, op, params, state: 'NEW', deadline: null, result: null, history: [], code: null }
+          setIntent(inst, it, 'PREPARED', {}, true)
+        } else if (canon(it.params) !== canon(params)) {
+          persist(inst, () => { it.params = params })
+          log(`${OP_LABEL[op]} 的参数随新确认而改变，沿用原操作标识 ${opId.slice(0, 6)}`)
+        }
+        const r = yield* sendOp(inst, it)
+        if (r === 'rejected') return { error: '业务拒绝', code: it.code }
+        ids.push(it.result.id)
+      }
+      return { ok: true, data: { ids } }
+    }
+
+    function* execTool(inst, c) {
+      if (c.name === 'request_confirmation') {
+        persist(inst, () => { s.confirmations.push({ id: s.confirmations.length + 1, hash: h(c.input), params: c.input, confirmed: false, valid: true }) })
+        s.chat.push({ who: 'Agent', text: `请确认退货：订单 ${c.input.orderId} 商品 ${c.input.lineItemId}，数量 ${c.input.qty}，原因"${c.input.reason}"，退货运费 ${c.input.fee} 元` })
+        return { asked: true }
+      }
+      if (c.name === 'submit_return') return yield* submitReturn(inst, c.input)
+      advanceTo(s.now + 200)
+      for (let i = 0; i < 4; i++) {
+        const r = read(c.name)
+        if (r !== 'unavailable') return { data: r }
+        if (i === 3) { if (s.cfg.arm === 'C') throw new HandoffNow('重试用尽'); throw new ExternalWait() }
+        log(`${TOOL_LABEL[c.name]} 返回 503，退避后重试`)
+        advanceTo(s.now + 1000 * 2 ** i)
+      }
+    }
+
+    function ctx(turn) {
+      const results = s.steps.filter(x => x.turn === turn && x.kind === 'tool' && !x.discarded).sort((a, b) => a.k - b.k).map(x => ({ name: x.name, ...x.output }))
+      const vc = validConfirmed()
+      return { turn, input: s.turnInputs[turn], results, notes: s.notes.filter(n => n.turn === turn), confirmed: vc ? vc.params : null }
+    }
+
+    function model(c) {
+      const base = { orderId: 'O1', lineItemId: 'L1', qty: 1, reason: s.reason }
+      const last = c.results[c.results.length - 1]
+      const stop = c.notes.find(n => n.disposition === 'stop')
+      const reconf = c.notes.find(n => n.disposition === 'reconfirm')
+      if (c.input === 'start') {
+        if (c.results.length === 0) return { tools: [{ name: 'query_order', input: { orderId: 'O1' } }, { name: 'query_aftersales', input: { orderId: 'O1', lineItemId: 'L1' } }, { name: 'query_rules', input: { orderId: 'O1' } }] }
+        const rules = c.results.find(r => r.name === 'query_rules')
+        const p = { ...base, fee: rules && rules.data ? rules.data.fee : 0 }
+        return { tools: [{ name: 'request_confirmation', input: p }, { name: 'submit_return', input: p }] }
+      }
+      if (stop && (c.results.length === 0 || (last && last.error))) return { text: '无法继续办理：' + stop.reason }
+      if (last && last.name === 'query_rules') return { tools: [{ name: 'request_confirmation', input: { ...base, fee: last.data.fee } }] }
+      if (reconf && (c.results.length === 0 || (last && last.error))) return { tools: [{ name: 'request_confirmation', input: { ...base, fee: reconf.fee } }] }
+      if (c.results.length === 0) {
+        if (c.input === 'change') return { tools: [{ name: 'query_rules', input: { orderId: 'O1' } }] }
+        return c.confirmed ? { tools: [{ name: 'submit_return', input: c.confirmed }] } : { tools: [{ name: 'query_rules', input: { orderId: 'O1' } }] }
+      }
+      if (last && last.error === '需要用户确认') return { tools: [{ name: 'query_rules', input: { orderId: 'O1' } }] }
+      if (last && last.ok) return { text: '已提交退货：' + last.data.ids.join('、') }
+      return { text: '无法办理：' + ((last && (last.code || last.error)) || '未知原因') }
+    }
+
+    const describeOut = out => out.text ? `回复"${out.text}"` : '调用 ' + out.tools.map(t => TOOL_LABEL[t.name] || t.name).join('、')
+
+    function* runTurn(inst) {
+      const turn = s.task.turn
+      let k = 0
+      for (let guard = 0; guard < 12; guard++) {
+        let out
+        const ms = stepAt(turn, k)
+        if (ms) { out = ms.output; log(`按步骤日志复用第 ${turn} 轮第 ${k} 步的模型输出，不重新调用模型`) }
+        else {
+          advanceTo(s.now + 1000)
+          s.counters.modelCalls++
+          out = model(ctx(turn))
+          yield P('after_model_before_checkpoint', `模型返回：${describeOut(out)}（尚未写入检查点）`)
+          const kk = k
+          persist(inst, () => { s.steps.push({ turn, k: kk, kind: 'model', name: '模型调用', input: null, output: out, volatile: false, discarded: false }) })
+          yield P('after_model_checkpoint', `模型调用已写入步骤日志（第 ${turn} 轮第 ${kk} 步）`)
+        }
+        k++
+        if (out.text) {
+          const kk = k
+          persist(inst, () => {
+            const key = `${turn}:${kk}`
+            if (!s.messageKeys.has(key)) { s.messageKeys.add(key); s.chat.push({ who: 'Agent', text: out.text }) }
+            else s.counters.dupMsgPrevented++
+            s.task.state = 'WAITING_USER'
+            s.task.owner = null
+          })
+          log(`Agent 回复顾客，本轮结束，释放租约`)
+          return
+        }
+        let ended = false
+        for (const c of out.tools || []) {
+          if (!stepAt(turn, k)) {
+            let result
+            if (ended) result = { skipped: true, note: '未执行：本轮已转为等待用户' }
+            else {
+              result = yield* execTool(inst, c)
+              if (c.name.startsWith('query_')) yield P('after_read_before_checkpoint', `读到${TOOL_LABEL[c.name]}结果（尚未写入检查点）`, c.name)
+            }
+            const kk = k
+            persist(inst, () => { s.steps.push({ turn, k: kk, kind: 'tool', name: c.name, input: c.input, output: result, volatile: isVolatile(c.name), discarded: false }) })
+            if (ended) log(`${TOOL_LABEL[c.name]} 排在请求确认之后，不执行，补一条合成结果`)
+            yield P('after_tool_checkpoint', `${TOOL_LABEL[c.name]} 已写入步骤日志（第 ${turn} 轮第 ${kk} 步）`, c.name)
+          } else log(`按步骤日志复用第 ${turn} 轮第 ${k} 步 ${TOOL_LABEL[c.name]} 的结果`)
+          k++
+          if (INTERACTION.has(c.name)) ended = true
+        }
+        if (ended) {
+          persist(inst, () => { s.task.state = 'WAITING_USER'; s.task.owner = null })
+          log('Agent 请求顾客确认，本轮结束，释放租约')
+          return
+        }
+      }
+    }
+
+    function recheck() {
+      const latest = new Map()
+      for (const x of s.steps) if (x.kind === 'tool' && x.volatile && !x.discarded && x.output && x.output.data) latest.set(x.name + h(x.input), x)
+      const changes = []
+      for (const x of latest.values()) {
+        const r = read(x.name)
+        s.counters.readReruns++
+        if (r === 'unavailable') continue
+        if (h(r) !== h(x.output.data)) changes.push({ name: x.name, before: x.output.data, after: r })
+      }
+      log(`复查：重新执行 ${latest.size} 个易变读（${[...latest.values()].map(x => TOOL_LABEL[x.name]).join('、') || '无'}），${changes.length ? changes.map(c => TOOL_LABEL[c.name]).join('、') + ' 有变化' : '全部无变化，模型上下文保持不变'}`)
+      return changes
+    }
+
+    function assess(changes) {
+      const own = new Set(s.intents.filter(i => i.result).map(i => i.result.id))
+      if (s.cfg.ownByClientRef) for (const c of changes) if (c.name === 'query_aftersales') for (const a of c.after.list) if (a.clientRef && intent(a.clientRef)) own.add(a.id)
+      const firstDone = s.intents.some(i => i.op === 'create_aftersales' && DONE.has(i.state))
+      const turn = s.task.turn
+      for (const c of changes) if (c.name === 'query_order' && c.after.refunded) return { turn, disposition: 'stop', reason: '订单已退款' }
+      for (const c of changes) if (c.name === 'query_aftersales' && c.after.list.some(a => a.open && !own.has(a.id))) return { turn, disposition: 'stop', reason: '该商品已有其他进行中的申请' }
+      for (const c of changes) if (c.name === 'query_rules' && c.after.fee !== c.before.fee && !firstDone) return { turn, disposition: 'reconfirm', reason: '退货运费已变化', fee: c.after.fee }
+      return null
+    }
+
+    function* recover(inst) {
+      s.counters.takeovers++
+      log(`执行实例 ${inst.id} 开始恢复：按步骤日志重建进度`)
+      const arm = s.cfg.arm
+      if (arm !== 'B-verify') {
+        for (const it of [...s.intents]) if (it.state === 'SENT' || it.state === 'UNKNOWN') {
+          const v = yield* verify(inst, it)
+          if (v === 'handoff') throw new HandoffNow('无法判断写入结果')
+        }
+      } else log('消融 B−核验：恢复时跳过核验')
+      if (arm === 'B' || arm === 'B-verify') {
+        const changes = recheck()
+        yield P('after_recheck', changes.length ? '复查发现变化，交给业务规则判断处置' : '复查完成：无变化', null)
+        if (changes.length) {
+          const note = assess(changes)
+          if (!note) log('处置：继续（变化与本任务无关，或是本任务自己的写入）')
+          else {
+            log(`处置：${note.disposition === 'stop' ? '停止并说明原因' : '重新确认'}（${note.reason}）`)
+            persist(inst, () => {
+              s.notes.push(note)
+              for (const c of s.confirmations) c.valid = false
+              if (note.disposition === 'stop') {
+                if (s.cfg.fullTransitions) for (const it of s.intents) if (it.state === 'PREPARED' || it.state === 'VERIFIED_ABSENT') { it.state = 'CANCELLED'; it.history.push(`${fmt(s.now)} CANCELLED`) }
+                else log('未补全转换：停止后未完成的写入意图没有进入 CANCELLED')
+              }
+              if (note.disposition === 'reconfirm') s.counters.reconfirms++
+            })
+          }
+        }
+      } else if (arm === 'B-recheck') log('消融 B−复查：恢复后沿用旧的读取结果')
+      if (arm === 'A') {
+        const turn = s.task.turn
+        persist(inst, () => { for (const x of s.steps) if (x.turn === turn) x.discarded = true })
+        log('轮次级重跑：丢弃本轮内部轨迹，从本轮开头重新决策和查询')
+      }
+    }
+
+    function* executor(inst) {
+      yield P('claimed', `执行实例 ${inst.id} 认领任务（租约版本 ${inst.version}）`)
+      if (s.task.needsRecovery) {
+        yield* recover(inst)
+        persist(inst, () => { s.task.needsRecovery = false })
+      }
+      yield* runTurn(inst)
+    }
+
+    function claim(inst) {
+      s.task.version++
+      s.task.owner = inst.id
+      s.task.leaseUntil = s.now + LEASE
+      s.task.state = 'RUNNING'
+      inst.status = 'running'
+      inst.version = s.task.version
+      inst.gen = executor(inst)
+    }
+
+    function finishGen(inst, e) {
+      inst.gen = null
+      inst.point = null
+      if (inst.status === 'running') inst.status = 'idle'
+      s.lastPoint = null
+      if (!e) return
+      if (e instanceof ExternalWait) {
+        s.task.state = 'WAITING_EXTERNAL'
+        s.task.owner = null
+        if (!s.task.notified) { s.task.notified = true; s.chat.push({ who: '系统', text: '外部服务暂不可用，恢复后会自动继续办理' }) }
+        s.task.externalSince = s.now
+        s.task.probeDelay = 60000
+        s.task.nextProbe = s.now + 60000
+        log('重试用尽：任务进入等待外部，释放执行实例，由调度器按指数退避探测')
+      } else if (e instanceof HandoffNow) handoff(e.message)
+      else if (e instanceof Fenced) log(`执行实例 ${inst.id} 的后续工作全部作废，它停止处理该任务`)
+      else throw e
+    }
+
+    function advanceGen(inst) {
+      try {
+        const r = inst.gen.next()
+        if (r.done) { finishGen(inst, null); return }
+        inst.point = r.value
+        s.lastPoint = { ...r.value, inst: inst.id }
+        log(`[${inst.id}] ${r.value.desc}`)
+      } catch (e) { finishGen(inst, e) }
+    }
+
+    function step() {
+      const act = activeInst()
+      if (act) { advanceGen(act); return true }
+      if (s.task.state === 'READY') {
+        const inst = s.instances.find(i => i.status === 'idle')
+        if (!inst) { log('没有空闲的执行实例（容器重启中），时间前进 1 秒'); advanceTo(s.now + 1000); return true }
+        claim(inst)
+        advanceGen(inst)
+        return true
+      }
+      if (s.task.state === 'RUNNING') { log('持有租约的执行实例已失联，时间前进到看门狗发现租约过期'); advanceTo(s.task.leaseUntil + WATCHDOG); return true }
+      if (s.task.state === 'WAITING_EXTERNAL') { advanceTo(s.task.nextProbe); return true }
+      if (s.task.state === 'WAITING_USER') log('等待顾客操作')
+      else if (s.task.state === 'NEW') log('请先让顾客发起退货')
+      else log('任务已结束')
+      return false
+    }
+
+    const busy = () => !!activeInst() || s.task.state === 'READY'
+
+    const api = {
+      state: s,
+      fmt,
+      opLabel: OP_LABEL,
+      toolLabel: TOOL_LABEL,
+      LEASE, DELTA, MARGIN,
+      act(fn) { const before = s.log.length; fn(); s.lastEvents = s.log.slice(before) },
+      step,
+      runToIdle() { for (let i = 0; i < 400 && busy(); i++) step() },
+      runToPoint(point, op) {
+        for (let i = 0; i < 400 && busy(); i++) {
+          step()
+          if (s.lastPoint && s.lastPoint.point === point && (!op || s.lastPoint.op === op)) return true
+        }
+        return false
+      },
+      start() {
+        if (s.task.state !== 'NEW') { log('任务已经开始'); return }
+        s.task.turn = 1
+        s.turnInputs[1] = 'start'
+        s.task.state = 'READY'
+        s.chat.push({ who: '顾客', text: '我要退货：订单 O1 的商品 L1，尺码不合适' })
+        log('顾客发起退货，任务进入待执行')
+      },
+      confirm() {
+        const pending = [...s.confirmations].reverse().find(c => !c.confirmed && c.valid)
+        if (s.task.state !== 'WAITING_USER' || !pending) { log('现在没有待顾客确认的请求'); return }
+        pending.confirmed = true
+        s.task.turn++
+        s.turnInputs[s.task.turn] = 'confirm'
+        s.task.state = 'READY'
+        s.chat.push({ who: '顾客', text: `确认（运费 ${pending.params.fee} 元）` })
+        log(`顾客确认第 ${pending.id} 次确认请求，开始第 ${s.task.turn} 轮`)
+      },
+      changeReason() {
+        if (s.task.state !== 'WAITING_USER') { log('只有在等待顾客时才能修改'); return }
+        s.reason = s.reason === '尺码不合适' ? '质量问题' : '尺码不合适'
+        s.task.turn++
+        s.turnInputs[s.task.turn] = 'change'
+        s.task.state = 'READY'
+        s.chat.push({ who: '顾客', text: `退货原因改成"${s.reason}"` })
+        log(`顾客修改退货原因，旧确认的参数哈希不再匹配，开始第 ${s.task.turn} 轮`)
+      },
+      close() {
+        if (s.task.state !== 'WAITING_USER') { log('只有在等待顾客时才能结束会话'); return }
+        s.task.state = 'CLOSED'
+        s.chat.push({ who: '顾客', text: '结束会话' })
+        log('顾客结束会话，任务关闭')
+      },
+      advance(ms) { advanceTo(s.now + ms); log(`时间前进到 ${fmt(s.now)}`) },
+      advanceToAbs(t) { advanceTo(Math.max(s.now, t)); log(`时间前进到 ${fmt(s.now)}`) },
+      expireLease() {
+        if (s.task.state !== 'RUNNING') { log('任务当前没有被执行实例持有'); return }
+        if (ownerAlive()) { log('持有租约的执行实例仍在心跳，租约不会过期'); return }
+        advanceTo(s.task.leaseUntil + WATCHDOG)
+      },
+      crash() {
+        const a = s.instances.find(i => i.status === 'running' && i.gen)
+        if (!a) { log('当前没有正在执行的实例'); return }
+        const at = a.point ? a.point.desc : ''
+        a.status = 'dead'
+        a.gen = null
+        a.point = null
+        a.restartAt = s.now + RESTART
+        s.lastPoint = null
+        log(`执行实例 ${a.id} 被 SIGKILL（停在：${at}）：不做任何清理，租约没有释放；容器将于 ${fmt(a.restartAt)} 按重启策略拉起`)
+      },
+      pause() {
+        const a = s.instances.find(i => i.status === 'running' && i.gen)
+        if (!a) { log('当前没有正在执行的实例'); return }
+        a.status = 'paused'
+        s.lastPoint = null
+        log(`执行实例 ${a.id} 被 SIGSTOP 假死（停在：${a.point ? a.point.desc : ''}）：不再心跳，但它的执行状态还在`)
+      },
+      resume() {
+        const p = s.instances.find(i => i.status === 'paused')
+        if (!p) { log('没有假死的执行实例'); return }
+        p.status = 'running'
+        log(`执行实例 ${p.id} 收到 SIGCONT 苏醒，按它自己的旧状态继续往下做`)
+        if (s.task.owner === p.id && s.task.version === p.version) { log('它的租约还没被接管，继续正常执行'); return }
+        for (let i = 0; i < 60 && p.gen; i++) {
+          try {
+            const r = p.gen.next()
+            if (r.done) { finishGen(p, null); break }
+            p.point = r.value
+            log(`[${p.id}·假死苏醒] ${r.value.desc}`)
+          } catch (e) { finishGen(p, e); break }
+        }
+        if (p.status === 'running' && !p.gen) p.status = 'idle'
+      },
+      armDrop(op) { s.bs.nextDrop.add(op); log(`已设置：下一次 ${OP_LABEL[op]} 在业务服务提交后断开连接`) },
+      armDelay(op, ms) { s.bs.nextDelay.set(op, ms); log(`已设置：下一次 ${OP_LABEL[op]} 在网络中延迟 ${ms / 1000} 秒才到达`) },
+      outage(ms) { s.bs.outages.push([s.now, s.now + ms]); log(`业务服务从 ${fmt(s.now)} 起返回 503，直到 ${fmt(s.now + ms)}`) },
+      mutate(kind) {
+        if (kind === 'competing') s.bs.aftersales.push({ id: 'AS-OTHER', clientRef: null, lineItemId: 'L1', qty: 1, fee: s.bs.fee, open: true, at: s.now })
+        if (kind === 'refunded') s.bs.refunded = true
+        if (kind === 'fee') s.bs.fee = 12
+        log({ competing: '他人为同一商品提交了进行中的申请 AS-OTHER', refunded: '订单 O1 被改为已退款', fee: '退货运费从 8 元改为 12 元' }[kind])
+      },
+      outcome() {
+        const st = s.task.state
+        const asN = ourAftersales().length
+        const shN = s.bs.shipments.length
+        const last = lastAgentText()
+        if (st === 'HANDED_OFF') return '已转人工'
+        if (asN >= 1 && shN >= 1 && last.startsWith('已提交')) return s.counters.reconfirms > 0 ? '重新确认后完成' : '自动完成'
+        if (last.startsWith('无法继续办理')) return '停止并说明原因'
+        if (last.startsWith('无法办理')) return '业务拒绝'
+        if (st === 'NEW') return '尚未开始'
+        if (st === 'CLOSED') return '已关闭（未提交退货）'
+        return '进行中'
+      },
+      invariants() {
+        const ourAs = ourAftersales()
+        const ourShip = s.bs.shipments
+        const last = lastAgentText()
+        let consistent = null
+        if (s.handoffPkg) {
+          consistent = s.handoffPkg.intents.every(p => {
+            const actual = p.op === 'create_aftersales' ? ourAs.some(a => a.clientRef === p.opId) : ourShip.some(x => x.clientRef === p.opId)
+            if (p.state === 'CONFIRMED' || p.state === 'VERIFIED_DONE') return actual
+            if (p.state === 'SENT' || p.state === 'UNKNOWN' || p.state === 'HANDOFF') return true
+            return !actual
+          }) && ourAs.every(a => s.handoffPkg.intents.some(p => p.opId === a.clientRef)) && ourShip.every(x => s.handoffPkg.intents.some(p => p.opId === x.clientRef))
+        }
+        return [
+          { label: '本任务售后单不超过 1 张', ok: ourAs.length <= 1, detail: `${ourAs.length} 张` },
+          { label: '寄回单不超过 1 张', ok: ourShip.length <= 1, detail: `${ourShip.length} 张` },
+          { label: '没有按失效条件（旧运费）写入', ok: s.bs.staleWrites === 0, detail: `${s.bs.staleWrites} 次` },
+          { label: '没有"告知失败但实际已写入"', ok: !((last.startsWith('无法')) && ourAs.length + ourShip.length > 0), detail: last.startsWith('无法') ? `业务库有 ${ourAs.length + ourShip.length} 条本任务记录` : '' },
+          { label: '交接信息与业务库一致', ok: consistent, detail: consistent === null ? '尚未转人工' : '' },
+        ]
+      },
+    }
+    return api
+  }
+
+  return { create }
+})()
+</script>
+
+<script>
+const $ = id => document.getElementById(id)
+const esc = v => String(v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const DEFAULT_CFG = { arm: 'B', mode: 'idem', delta: true, rulesVolatile: false, serverChecksFee: false, ownByClientRef: false, fullTransitions: false }
+const ARM_LABEL = { A: 'A 轮次级重跑', B: 'B 调用级检查点恢复', C: 'C 故障即转人工', 'B-verify': 'B−核验', 'B-recheck': 'B−复查' }
+const TASK_LABEL = { NEW: '尚未开始', READY: '待执行', RUNNING: '执行中', WAITING_USER: '等待顾客', WAITING_EXTERNAL: '等待外部服务', HANDED_OFF: '已转人工', CLOSED: '已关闭' }
+const INST_LABEL = { idle: '空闲', running: '执行中', paused: '假死（SIGSTOP）', dead: '崩溃，容器重启中' }
+let sim
+let tabIndex = 0
+let tabVariant = 0
+let tabNext = 0
+let tabExplain = ''
+
+function readCfg() {
+  return { arm: $('cfgArm').value, mode: $('cfgMode').value, delta: $('cfgDelta').checked, rulesVolatile: $('cfgRules').checked, serverChecksFee: $('cfgFee').checked, ownByClientRef: $('cfgOwn').checked, fullTransitions: $('cfgFull').checked }
+}
+function writeCfg(c) {
+  $('cfgArm').value = c.arm
+  $('cfgMode').value = c.mode
+  $('cfgDelta').checked = c.delta
+  $('cfgRules').checked = c.rulesVolatile
+  $('cfgFee').checked = c.serverChecksFee
+  $('cfgOwn').checked = c.ownByClientRef
+  $('cfgFull').checked = c.fullTransitions
+}
+function reset(c) {
+  writeCfg(c)
+  sim = RecoveryModel.create(c)
+  sim.state.lastEvents = [{ t: 0, text: `已重置：${ARM_LABEL[c.arm]}，${c.mode === 'idem' ? '幂等 key 模式' : '无幂等模式'}，Δ ${c.delta ? '开' : '关'}` }]
+}
+
+const W1 = 'create_aftersales'
+const W2 = 'create_shipment'
+const S = {
+  start: { label: '顾客发起退货', run: m => m.start() },
+  turn1: { label: '执行实例处理第 1 轮，直到请求顾客确认', run: m => m.runToIdle() },
+  confirm: { label: '顾客确认', run: m => m.confirm() },
+  crash: { label: '执行实例崩溃（SIGKILL）', run: m => m.crash() },
+  expire: { label: '时间前进到看门狗发现租约过期', run: m => m.expireLease() },
+  idle: { label: '对等实例接管，推进到本轮停下', run: m => m.runToIdle() },
+}
+const TABS = [
+  {
+    title: '写1响应丢失后崩溃',
+    desc: '售后单已经在业务服务里创建成功，但响应在路上丢了，执行实例随后崩溃。接管的实例并不知道这笔写入是否生效。',
+    watch: '看"写入意图"和"不变量"：B 组先核验，找回原售后单并继续生成寄回单；B−核验跳过核验，复查时把自己的售后单当成他人的冲突申请，告诉顾客办不了，但售后单其实已经存在（红灯）。打开 P2 后，复查按 client_ref 认出这是自己的写入。',
+    variants: [
+      { label: 'B 组', cfg: { arm: 'B' } },
+      { label: 'B−核验', cfg: { arm: 'B-verify' } },
+      { label: 'B−核验 + P2', cfg: { arm: 'B-verify', ownByClientRef: true } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货，任务进入待执行。' },
+      { ...S.turn1, explain: '第 1 轮：查询订单、售后单和售后规则，然后请求确认。模型同时还调用了提交退货，但它排在请求确认之后，不执行，只补一条合成结果。' },
+      { ...S.confirm, explain: '顾客确认，确认绑定了这组参数的哈希。' },
+      { label: '设置故障：写1 提交后丢失响应', run: m => m.armDrop(W1), explain: '下一次创建售后单时，业务服务会提交成功，但响应不会回到执行进程。' },
+      { label: '推进到写1结果未知', run: m => m.runToPoint('after_unknown', W1), explain: '执行进程等不到响应，超时，写入意图记为 UNKNOWN。看业务库：售后单其实已经存在。' },
+      { ...S.crash, explain: '执行实例在这个故障点崩溃，租约没有释放。' },
+      { ...S.expire, explain: '另一个执行实例只能等租约过期后才能接管。' },
+      { ...S.idle, explain: '接管的实例按步骤日志重建进度，然后按实验组的规则恢复。对比三个对照组的结局和不变量。' },
+    ],
+  },
+  {
+    title: '两次写入之间崩溃',
+    desc: '售后单已确认创建，还没生成寄回单时执行实例崩溃。',
+    watch: '两组都能完成且不重复，看"计数"里的模型调用次数：A 组丢弃本轮内部轨迹、从本轮开头重跑，多调用一次模型；B 组按步骤日志复用模型输出，从第二个写操作继续。',
+    variants: [
+      { label: 'B 组', cfg: { arm: 'B' } },
+      { label: 'A 组', cfg: { arm: 'A' } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮结束，等待顾客确认。' },
+      { ...S.confirm, explain: '顾客确认。' },
+      { label: '推进到写1确认成功', run: m => m.runToPoint('after_write_confirmed', W1), explain: '售后单已创建，写入意图记为 CONFIRMED，寄回单还没开始。' },
+      { ...S.crash, explain: '执行实例崩溃。' },
+      { ...S.expire, explain: '等租约过期。' },
+      { ...S.idle, explain: 'B 组：复用第 2 轮的模型输出，写1 直接复用已完成的结果，只发写2。A 组：丢弃本轮轨迹重新调用模型，提交退货时写1因写入意图日志已完成而跳过。' },
+    ],
+  },
+  {
+    title: '假死苏醒被拦截',
+    desc: '执行实例在写2 记为 SENT 之后、请求发出之前被 SIGSTOP 暂停。租约过期后另一个实例接管并完成任务，旧实例随后苏醒，按它自己的旧状态继续往下做。',
+    watch: '看事件记录：苏醒的旧实例把过期的写2 请求发给业务服务，被处理时限 Δ 拒绝；它再写检查点时被版本校验拒绝。业务库里寄回单仍然只有 1 张。',
+    variants: [
+      { label: '幂等 key 模式', cfg: { arm: 'B', mode: 'idem', fullTransitions: true } },
+      { label: '无幂等模式', cfg: { arm: 'B', mode: 'nonidem', fullTransitions: true } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮结束。' },
+      { ...S.confirm, explain: '顾客确认。' },
+      { label: '推进到写2 SENT、请求发出前', run: m => m.runToPoint('after_sent_before_send', W2), explain: '写2 的写入意图已记为 SENT，截止时刻已经确定，请求还没发出。' },
+      { label: '执行实例假死（SIGSTOP）', run: m => m.pause(), explain: '旧实例不再心跳，但它的执行状态还在，随时可能苏醒。' },
+      { ...S.expire, explain: '租约过期。' },
+      { label: '对等实例接管并完成任务', run: m => m.runToIdle(), explain: '新实例的租约版本加 1。它核验写2：截止时刻加余量已过，业务服务里没有这笔寄回单，于是用原操作标识重发并成功。' },
+      { label: '唤醒假死实例（SIGCONT）', run: m => m.resume(), explain: '旧实例按它的旧状态把写2 请求发出：请求上的截止时刻早已过去，业务服务拒绝且不提交；它再写检查点时，版本号对不上，被拒绝，它停止工作。' },
+    ],
+  },
+  {
+    title: '无幂等模式去掉 Δ',
+    desc: '无幂等模式下，写2 的请求在网络中被延迟 20 秒。执行进程超时后核验"查不到"，用原操作标识重发成功，任务完成。20 秒后，那个迟到的原请求才到达业务服务。',
+    watch: '最后一步之后看寄回单数量：有 Δ 时迟到请求因过期被拒绝；没有 Δ 时它会被提交，出现第 2 张寄回单（红灯）。"查不到"只说明请求可能还在路上，Δ 让"查不到"变成确定的"不会再提交"。',
+    variants: [
+      { label: '有 Δ', cfg: { arm: 'B', mode: 'nonidem', delta: true, fullTransitions: true } },
+      { label: '无 Δ', cfg: { arm: 'B', mode: 'nonidem', delta: false, fullTransitions: true } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮结束。' },
+      { ...S.confirm, explain: '顾客确认。' },
+      { label: '设置故障：写2 延迟 20 秒到达', run: m => m.armDelay(W2, 20000), explain: '下一次生成寄回单的请求会在网络里停留 20 秒。' },
+      { label: '推进到本轮结束', run: m => m.runToIdle(), explain: '写2 超时 → UNKNOWN → 等到截止时刻加余量 → 核验查不到 → 用原操作标识重发 → 成功。注意"在途请求"里那个还没到达的原请求。' },
+      { label: '时间前进 20 秒，迟到的原请求到达', run: m => m.advance(20000), explain: '比较两个对照组的寄回单数量。' },
+    ],
+  },
+  {
+    title: '故障期间运费变化',
+    desc: '顾客确认运费 8 元后，写1 刚记为 PREPARED 时执行实例崩溃；停机期间运费改为 12 元。',
+    watch: '规则按"稳定"标注时，复查不会重新查询运费，系统按旧运费创建售后单（失效写入，红灯）。改为"易变"后，复查发现变化，处置为重新确认。只打开业务服务校验运费时，写入被 FEE_CHANGED 拒绝，不会写错，但结局是业务拒绝而不是重新确认。',
+    variants: [
+      { label: '规则稳定', cfg: { arm: 'B', fullTransitions: true } },
+      { label: '规则易变（P1）', cfg: { arm: 'B', rulesVolatile: true, fullTransitions: true } },
+      { label: '规则稳定 + 校验运费（P1）', cfg: { arm: 'B', serverChecksFee: true, fullTransitions: true } },
+      { label: '易变 + 校验运费', cfg: { arm: 'B', rulesVolatile: true, serverChecksFee: true, fullTransitions: true } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮查到退货运费 8 元，请求确认。' },
+      { ...S.confirm, explain: '顾客确认 8 元。' },
+      { label: '推进到写1 PREPARED', run: m => m.runToPoint('after_prepared', W1), explain: '写入意图已记为 PREPARED，请求还没发出。' },
+      { ...S.crash, explain: '执行实例崩溃。' },
+      { label: '停机期间运费改为 12 元', run: m => m.mutate('fee'), explain: '业务状态被他人改变。' },
+      { ...S.expire, explain: '等租约过期。' },
+      { ...S.idle, explain: '接管实例恢复：看复查是否重新查询了售后规则，以及给出的处置。' },
+      { label: '顾客确认新运费（如果被要求）', run: m => m.confirm(), explain: '只有处置为重新确认时才有待确认的请求。新确认沿用原来的操作标识，写入意图换成新参数。' },
+      { label: '推进到本轮停下', run: m => m.runToIdle(), explain: '看最终结局和"没有按失效条件写入"这一项。' },
+    ],
+  },
+  {
+    title: '故障期间插入他人申请',
+    desc: '写1 刚记为 PREPARED 时执行实例崩溃；停机期间有人为同一商品提交了进行中的申请。',
+    watch: 'B 组复查发现售后单列表变化，业务规则判定"停止并说明原因"，未完成的写入意图进入 CANCELLED。B−复查和 A 组不复查，直接发出写1，被业务服务以 OPEN_APPLICATION_EXISTS 拒绝：没有写错，但结局是业务拒绝。',
+    variants: [
+      { label: 'B 组', cfg: { arm: 'B', fullTransitions: true } },
+      { label: 'B−复查', cfg: { arm: 'B-recheck', fullTransitions: true } },
+      { label: 'A 组', cfg: { arm: 'A', fullTransitions: true } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮结束。' },
+      { ...S.confirm, explain: '顾客确认。' },
+      { label: '推进到写1 PREPARED', run: m => m.runToPoint('after_prepared', W1), explain: '请求还没发出。' },
+      { ...S.crash, explain: '执行实例崩溃。' },
+      { label: '停机期间他人提交了申请', run: m => m.mutate('competing'), explain: '业务库出现 AS-OTHER。' },
+      { ...S.expire, explain: '等租约过期。' },
+      { ...S.idle, explain: '对比三组的处置和结局。' },
+    ],
+  },
+  {
+    title: '长时间不可用',
+    desc: '顾客确认后，业务服务开始持续返回 503。重试用尽后任务进入"等待外部"，释放执行实例，由调度器按指数退避探测。',
+    watch: '看任务状态和顾客对话："暂不可用"只告知一次。3 小时的故障在恢复后自动完成（恢复时会先复查）；7 小时的故障超过 6 小时最长等待，转人工。',
+    variants: [
+      { label: '3 小时', cfg: { arm: 'B', fullTransitions: true }, param: 3 * 3600000 },
+      { label: '7 小时', cfg: { arm: 'B', fullTransitions: true }, param: 7 * 3600000 },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮结束。' },
+      { ...S.confirm, explain: '顾客确认。' },
+      { label: '业务服务开始长时间 503', run: (m, v) => m.outage(v.param), explain: '从现在起业务服务不可用。' },
+      { label: '推进到本轮停下', run: m => m.runToIdle(), explain: '写1 连续收到 503（P3：确定未提交，回到 PREPARED 并退避重试），用尽后进入等待外部。' },
+      { label: '时间前进到第 4 小时', run: m => m.advanceToAbs(4 * 3600000), explain: '调度器按退避间隔探测，间隔从 1 分钟翻倍到 30 分钟封顶。' },
+      { label: '推进（如果任务已回到待执行）', run: m => m.runToIdle(), explain: '3 小时的故障此时已恢复：接管实例先复查，再从未完成的写操作继续。7 小时的情况这一步不会有动作。' },
+      { label: '时间前进到第 7 小时', run: m => m.advanceToAbs(7 * 3600000), explain: '7 小时的故障在等待超过 6 小时后转人工。' },
+    ],
+  },
+  {
+    title: 'C 组交接一致性',
+    desc: 'C 组（故障即转人工）在写1 结果不确定时停止，先核验再生成交接信息。写1 的原请求在网络中被延迟 20 秒。',
+    watch: '交接信息里写1 的状态是核验结果 VERIFIED_ABSENT。有 Δ 时，迟到的原请求被拒绝，交接信息和业务库一致；没有 Δ 时，迟到的请求在转人工之后被提交，交接信息说"未生效"但业务库里有售后单（红灯）。',
+    variants: [
+      { label: '有 Δ', cfg: { arm: 'C', delta: true, fullTransitions: true } },
+      { label: '无 Δ', cfg: { arm: 'C', delta: false, fullTransitions: true } },
+    ],
+    steps: [
+      { ...S.start, explain: '顾客发起退货。' },
+      { ...S.turn1, explain: '第 1 轮结束。' },
+      { ...S.confirm, explain: '顾客确认。' },
+      { label: '设置故障：写1 延迟 20 秒到达', run: m => m.armDelay(W1, 20000), explain: '下一次创建售后单的请求会在网络里停留 20 秒。' },
+      { label: '推进到本轮停下', run: m => m.runToIdle(), explain: '写1 超时 → UNKNOWN → C 组停止：等到截止时刻加余量核验，查不到，记为 VERIFIED_ABSENT，生成交接信息。' },
+      { label: '时间前进 20 秒，迟到的原请求到达', run: m => m.advance(20000), explain: '看"交接信息与业务库一致"这一项。' },
+    ],
+  },
+]
+
+function startTab(i, v) {
+  tabIndex = i
+  tabVariant = v
+  tabNext = 0
+  tabExplain = TABS[i].steps[0] ? '按顺序点击下面的按钮。' : ''
+  reset({ ...DEFAULT_CFG, ...TABS[i].variants[v].cfg })
+  render()
+}
+
+function renderTabs() {
+  $('tabs').innerHTML = TABS.map((t, i) => `<button class="${i === tabIndex ? 'on' : ''}" data-tab="${i}">${esc(t.title)}</button>`).join('')
+  const t = TABS[tabIndex]
+  const variants = t.variants.map((v, i) => `<button class="${i === tabVariant ? 'primary' : ''}" data-variant="${i}">${esc(v.label)}</button>`).join('')
+  const steps = t.steps.map((st, i) => `<button class="${i < tabNext ? 'done' : i === tabNext ? 'next' : ''}" data-step="${i}" ${i === tabNext ? '' : 'disabled'}><span class="n">${i < tabNext ? '✓' : i + 1}</span><span>${esc(st.label)}</span></button>`).join('')
+  $('tabBody').innerHTML = `<div class="desc">${esc(t.desc)}</div><div class="watch">观察：${esc(t.watch)}</div><h3>对照组（切换会重置）</h3><div class="row">${variants}</div><div class="steps">${steps}</div>${tabExplain ? `<div class="explain">${esc(tabExplain)}</div>` : ''}${tabNext >= t.steps.length ? `<div class="row" style="margin-top:8px"><button data-variant="${tabVariant}">重新开始这个对照组</button></div>` : ''}`
+}
+
+function pill(text, kind) { return `<span class="pill ${kind || ''}">${esc(text)}</span>` }
+function stateKind(st) {
+  if (['CONFIRMED', 'VERIFIED_DONE'].includes(st)) return 'ok'
+  if (['UNKNOWN', 'SENT'].includes(st)) return 'warn'
+  if (['HANDOFF', 'REJECTED', 'CANCELLED'].includes(st)) return 'bad'
+  return 'blue'
+}
+function summarize(o) {
+  if (!o) return ''
+  if (o.text) return `回复：${o.text}`
+  if (o.tools) return o.tools.map(t => sim.toolLabel[t.name] || t.name).join('、')
+  if (o.skipped) return o.note
+  if (o.asked) return '已请求确认'
+  if (o.error) return `错误：${o.error}${o.code ? ' ' + o.code : ''}`
+  if (o.ok) return `成功：${o.data.ids.join('、')}`
+  if (o.data) return Object.entries(o.data).map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`).join('，')
+  return JSON.stringify(o)
+}
+
+function renderPanels() {
+  const s = sim.state
+  const f = sim.fmt
+  const owner = s.instances.find(i => i.id === s.task.owner)
+  const taskCard = `<div class="card"><h2>任务与租约</h2><div class="kv">
+<div>模拟时间</div><div class="mono">${f(s.now)}</div>
+<div>任务状态</div><div>${pill(TASK_LABEL[s.task.state] + ' ' + s.task.state, s.task.state === 'HANDED_OFF' ? 'bad' : s.task.state === 'RUNNING' ? 'blue' : '')}</div>
+<div>当前轮次</div><div>${s.task.turn}</div>
+<div>租约持有者</div><div>${s.task.owner ? esc(s.task.owner) + (owner && owner.status !== 'running' ? ' ' + pill('已失联', 'bad') : '') : '无'}</div>
+<div>lease_until</div><div class="mono">${s.task.state === 'RUNNING' ? f(s.task.leaseUntil) : '—'}</div>
+<div>租约版本</div><div>${s.task.version}</div>
+<div>待恢复</div><div>${s.task.needsRecovery ? pill('是', 'warn') : '否'}</div>
+${s.task.state === 'WAITING_EXTERNAL' ? `<div>下次探测</div><div class="mono">${f(s.task.nextProbe)}</div><div>已等待</div><div class="mono">${f(s.now - s.task.externalSince)}</div>` : ''}
+<div>当前设置</div><div class="small">${esc(ARM_LABEL[s.cfg.arm])} · ${s.cfg.mode === 'idem' ? '幂等 key' : '无幂等'} · Δ${s.cfg.delta ? '开' : '关'}${s.cfg.rulesVolatile ? ' · 规则易变' : ''}${s.cfg.serverChecksFee ? ' · 校验运费' : ''}${s.cfg.ownByClientRef ? ' · client_ref 识别' : ''}${s.cfg.fullTransitions ? ' · 补全转换' : ''}</div>
+</div></div>`
+  const instCard = `<div class="card"><h2>执行实例</h2><table><tr><th>实例</th><th>状态</th><th>持有版本</th><th>停在哪个故障点</th></tr>${s.instances.map(i => `<tr><td>${i.id}</td><td>${pill(INST_LABEL[i.status], i.status === 'running' ? 'blue' : i.status === 'idle' ? '' : 'bad')}</td><td>${i.version || '—'}</td><td class="small">${i.point && i.status !== 'dead' ? esc(i.point.desc) : '—'}</td></tr>`).join('')}</table></div>`
+  const inv = sim.invariants()
+  const c = s.counters
+  const invCard = `<div class="card"><h2>不变量与结局</h2>${inv.map(x => `<div class="inv ${x.ok === null ? 'na' : x.ok ? 'ok' : 'bad'}"><span>${x.ok === null ? '—' : x.ok ? '✓' : '✗'} ${esc(x.label)}</span><span class="small">${esc(x.detail)}</span></div>`).join('')}
+<div class="kv" style="margin-top:8px"><div>当前结局</div><div><b>${esc(sim.outcome())}</b></div>
+<div>模型调用</div><div>${c.modelCalls} 次</div><div>复查读</div><div>${c.readReruns} 次</div><div>接管恢复</div><div>${c.takeovers} 次</div><div>版本校验拒绝</div><div>${c.fenced} 次</div><div>过期请求被拒</div><div>${c.staleRejected} 次</div><div>重复消息被拦</div><div>${c.dupMsgPrevented} 次</div></div></div>`
+  const intentCard = `<div class="card"><h2>写入意图</h2>${s.intents.length ? `<table><tr><th>写操作</th><th>操作标识</th><th>状态</th><th>截止时刻</th><th>结果</th></tr>${s.intents.map(i => `<tr><td>${esc(sim.opLabel[i.op])}</td><td class="mono">${i.opId.slice(0, 6)}</td><td>${pill(i.state, stateKind(i.state))}</td><td class="mono">${i.deadline !== null ? f(i.deadline) : '—'}</td><td class="mono">${i.result ? esc(i.result.id) : i.code ? esc(i.code) : '—'}</td></tr><tr><td colspan="5" class="small muted">历史：${esc(i.history.join(' → '))}${i.op === 'create_aftersales' ? ` · 参数运费 ${i.params.fee} 元` : ''}</td></tr>`).join('')}</table>` : '<div class="muted small">还没有写入意图</div>'}</div>`
+  const confCard = `<div class="card"><h2>确认</h2>${s.confirmations.length ? `<table><tr><th>#</th><th>参数</th><th>参数哈希</th><th>顾客已确认</th><th>有效</th></tr>${s.confirmations.map(x => `<tr><td>${x.id}</td><td class="small">原因"${esc(x.params.reason)}"，运费 ${x.params.fee} 元</td><td class="mono">${x.hash.slice(0, 6)}</td><td>${x.confirmed ? pill('是', 'ok') : pill('待确认', 'warn')}</td><td>${x.valid ? pill('有效', 'ok') : pill('已作废', 'bad')}</td></tr>`).join('')}</table>` : '<div class="muted small">还没有确认请求</div>'}${s.notes.length ? `<h3>处置记录</h3>${s.notes.map(n => `<div class="small">第 ${n.turn} 轮：${n.disposition === 'stop' ? '停止并说明原因' : '重新确认'}（${esc(n.reason)}）</div>`).join('')}` : ''}</div>`
+  const bs = s.bs
+  const inflight = bs.inflight.filter(x => x.result === null)
+  const bizCard = `<div class="card"><h2>业务库</h2><div class="kv"><div>退货运费</div><div>${bs.fee} 元</div><div>订单已退款</div><div>${bs.refunded ? pill('是', 'bad') : '否'}</div><div>业务服务</div><div>${bs.outages.some(([a, b]) => s.now >= a && s.now < b) ? pill('503 不可用', 'bad') : pill('正常', 'ok')}</div></div>
+<h3>售后单</h3>${bs.aftersales.length ? `<table><tr><th>单号</th><th>client_ref</th><th>运费</th><th>进行中</th></tr>${bs.aftersales.map(a => `<tr><td class="mono">${esc(a.id)}</td><td class="mono">${a.clientRef ? a.clientRef.slice(0, 6) : '他人'}</td><td>${a.fee}${a.fee !== bs.fee ? ' ' + pill('旧运费', 'bad') : ''}</td><td>${a.open ? '是' : '否'}</td></tr>`).join('')}</table>` : '<div class="muted small">无</div>'}
+<h3>寄回单</h3>${bs.shipments.length ? `<table><tr><th>单号</th><th>client_ref</th><th>关联售后单</th></tr>${bs.shipments.map(x => `<tr><td class="mono">${esc(x.id)}</td><td class="mono">${x.clientRef.slice(0, 6)}</td><td class="mono">${esc(x.aftersalesId)}</td></tr>`).join('')}</table>` : '<div class="muted small">无</div>'}
+${s.cfg.mode === 'idem' ? `<h3>已登记的幂等 key（只在提交成功时登记）</h3>${bs.keys.size ? [...bs.keys.entries()].map(([k, v]) => `<div class="small mono">${k.slice(0, 6)} → ${esc(v.result.body.id)}</div>`).join('') : '<div class="muted small">无</div>'}` : ''}
+<h3>在途请求（还没到达业务服务）</h3>${inflight.length ? inflight.map(x => `<div class="small">${esc(sim.opLabel[x.req.op])}，操作标识 <span class="mono">${x.req.opId.slice(0, 6)}</span>，将于 <span class="mono">${f(x.arriveAt)}</span> 到达，携带截止时刻 <span class="mono">${x.req.deadline === null ? '无（Δ 关）' : f(x.req.deadline)}</span></div>`).join('') : '<div class="muted small">无</div>'}</div>`
+  const chatCard = `<div class="card"><h2>顾客对话</h2><div class="chat">${s.chat.length ? s.chat.map(m => `<div><span class="who">${esc(m.who)}</span>${esc(m.text)}</div>`).join('') : '<div class="muted small">还没有对话</div>'}</div></div>`
+  const hp = s.handoffPkg
+  const handoffCard = `<div class="card"><h2>交接信息</h2>${hp ? `<div class="kv"><div>原因</div><div>${esc(hp.reason)}</div><div>生成时间</div><div class="mono">${f(hp.at)}</div></div><table style="margin-top:6px"><tr><th>写操作</th><th>状态</th><th>结果</th></tr>${hp.intents.map(i => `<tr><td>${esc(sim.opLabel[i.op])}</td><td>${pill(i.state, stateKind(i.state))}</td><td class="mono">${i.result ? esc(i.result) : '—'}</td></tr>`).join('')}</table>` : '<div class="muted small">尚未转人工</div>'}</div>`
+  const stepCard = `<div class="card" style="grid-column:1/-1"><h2>步骤日志（只追加）</h2>${s.steps.length ? `<table><tr><th>轮次</th><th>序号</th><th>类型</th><th>名称</th><th>内容</th><th>易变</th><th>状态</th></tr>${s.steps.map(x => `<tr${x.discarded ? ' style="opacity:.45"' : ''}><td>${x.turn}</td><td>${x.k}</td><td>${x.kind === 'model' ? '模型调用' : '工具调用'}</td><td>${esc(x.kind === 'model' ? '模型' : sim.toolLabel[x.name] || x.name)}</td><td class="small">${esc(summarize(x.output))}</td><td>${x.volatile ? pill('易变', 'warn') : ''}</td><td>${x.discarded ? pill('已丢弃（A 组重跑）', 'bad') : ''}</td></tr>`).join('')}</table>` : '<div class="muted small">还没有步骤</div>'}</div>`
+  const logCard = `<div class="card" style="grid-column:1/-1"><h2>全部事件（最新在上）</h2><div class="log">${[...s.log].reverse().map(e => `<div><span class="t">${f(e.t)}</span>${esc(e.text)}</div>`).join('')}</div></div>`
+  $('panels').innerHTML = taskCard + invCard + instCard + intentCard + confCard + bizCard + chatCard + handoffCard + stepCard + logCard
+  const ev = s.lastEvents
+  $('just').innerHTML = ev.length ? ev.map(e => `<div><span class="t">${f(e.t)}</span>${esc(e.text)}</div>`).join('') : '<div class="muted">这次操作没有引起变化</div>'
+}
+
+function render() { renderTabs(); renderPanels() }
+
+const ACTIONS = {
+  start: m => m.start(), confirm: m => m.confirm(), changeReason: m => m.changeReason(), close: m => m.close(),
+  step: m => m.step(), runToIdle: m => m.runToIdle(), expireLease: m => m.expireLease(),
+  adv1s: m => m.advance(1000), adv10s: m => m.advance(10000), adv20s: m => m.advance(20000), adv1h: m => m.advance(3600000),
+  crash: m => m.crash(), pause: m => m.pause(), resume: m => m.resume(),
+  dropW1: m => m.armDrop(W1), dropW2: m => m.armDrop(W2), delayW1: m => m.armDelay(W1, 20000), delayW2: m => m.armDelay(W2, 20000),
+  out10s: m => m.outage(10000), out3h: m => m.outage(3 * 3600000), out7h: m => m.outage(7 * 3600000),
+  mCompeting: m => m.mutate('competing'), mRefunded: m => m.mutate('refunded'), mFee: m => m.mutate('fee'),
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button')
+  if (!b) return
+  if (b.dataset.act) { sim.act(() => ACTIONS[b.dataset.act](sim)); renderPanels(); return }
+  if (b.dataset.tab !== undefined) { startTab(Number(b.dataset.tab), 0); return }
+  if (b.dataset.variant !== undefined) { startTab(tabIndex, Number(b.dataset.variant)); return }
+  if (b.dataset.step !== undefined) {
+    const i = Number(b.dataset.step)
+    const t = TABS[tabIndex]
+    const st = t.steps[i]
+    sim.act(() => st.run(sim, t.variants[tabVariant]))
+    tabNext = i + 1
+    tabExplain = `第 ${i + 1} 步：${st.explain}`
+    render()
+  }
+})
+$('btnReset').addEventListener('click', () => { reset(readCfg()); tabNext = 0; tabExplain = '设置已改变，引导场景已从头开始；也可以直接用自由操作。'; render() })
+
+startTab(0, 0)
+</script>
+</body>
+</html>
