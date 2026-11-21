@@ -4,7 +4,6 @@ x-app: &app
   image: reckon-app:dev
   build: .
   init: true
-  restart: unless-stopped
   depends_on:
     postgres:
       condition: service_healthy

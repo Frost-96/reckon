@@ -8,7 +8,7 @@ const server = createHealthServer(pool);
 server.listen(Number(requireEnv("PORT")), "0.0.0.0");
 
 async function shutdown(): Promise<void> {
-  server.close();
+  await new Promise((resolve) => server.close(resolve));
   await pool.end();
 }
 

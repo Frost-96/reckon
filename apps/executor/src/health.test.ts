@@ -14,7 +14,7 @@ async function getHealth(connectionString: string): Promise<Response> {
   const pool = new pg.Pool({ connectionString, connectionTimeoutMillis: 1000 });
   const server = createHealthServer(pool);
   cleanups.push(async () => {
-    server.close();
+    await new Promise((resolve) => server.close(resolve));
     await pool.end();
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
