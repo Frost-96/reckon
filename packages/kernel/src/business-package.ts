@@ -40,5 +40,5 @@ export interface BusinessPackage {
 export function defineReadTool<Parameters extends z.ZodType>(
   declaration: ReadToolDeclaration<Parameters>,
 ): ToolDeclaration {
-  return declaration as ToolDeclaration;
+  return declaration;
 }

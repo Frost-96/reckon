@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { z } from "zod";
 import {
   type BusinessPackage,
@@ -228,4 +228,52 @@ test("the model is offered the business package's tools with their parameter sch
       },
     },
   ]);
+});
+
+test("a started executor serves tasks as customer messages arrive, until stopped", async () => {
+  const failing: BusinessPackage = {
+    systemPrompt: "",
+    tools: [
+      defineReadTool({
+        kind: "read",
+        name: "explode",
+        description: "Fails unexpectedly",
+        parameters: z.object({}),
+        volatility: "stable",
+        async run() {
+          throw new Error("boom");
+        },
+      }),
+    ],
+  };
+  const errors: unknown[] = [];
+  const worker = createExecutor({
+    db,
+    owner: "executor-1",
+    businessPackage: failing,
+    model: createScriptedModel([
+      { toolCalls: [{ name: "explode", arguments: {} }] },
+      { content: "served" },
+    ]),
+    pollIntervalMs: 20,
+    onError: (error) => errors.push(error),
+  });
+
+  worker.start();
+  try {
+    const crashedTaskId = await taskWithMessage("first");
+    await vi.waitFor(() => expect(errors).toHaveLength(1), { timeout: 2000 });
+    const servedTaskId = await taskWithMessage("second");
+    await vi.waitFor(
+      async () => expect((await getTask(db, servedTaskId))?.state).toBe("WAITING_USER"),
+      { timeout: 2000 },
+    );
+    // The failed turn keeps its lease until it expires, as if the executor had crashed.
+    expect((await getTask(db, crashedTaskId))?.state).toBe("RUNNING");
+  } finally {
+    await worker.stop();
+  }
+  const afterStop = await taskWithMessage("third");
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  expect((await getTask(db, afterStop))?.state).toBe("READY");
 });

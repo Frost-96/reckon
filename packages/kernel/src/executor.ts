@@ -13,7 +13,9 @@ export interface ExecutorOptions {
   model: ModelClient;
   leaseSeconds?: number;
   heartbeatIntervalMs?: number;
-  // Errors that do not end the turn, e.g. a failed heartbeat that will be retried.
+  // How long `start` waits before claiming again when nothing was READY.
+  pollIntervalMs?: number;
+  // Errors that do not stop the executor: a failed heartbeat (retried) or a failed turn.
   onError?: (error: unknown) => void;
 }
 
@@ -26,11 +28,16 @@ export interface TurnOutcome {
 export interface Executor {
   // Claims one READY task and runs its turn; undefined when nothing is READY.
   runOnce(): Promise<TurnOutcome | undefined>;
+  // Keeps claiming and running turns one after another until stopped.
+  start(): void;
+  // Stops claiming and waits for the turn in progress to finish.
+  stop(): Promise<void>;
 }
 
 export function createExecutor(options: ExecutorOptions): Executor {
   const leaseSeconds = options.leaseSeconds ?? 10;
   const heartbeatIntervalMs = options.heartbeatIntervalMs ?? 3000;
+  const pollIntervalMs = options.pollIntervalMs ?? 500;
   const onError = options.onError ?? ((error: unknown) => console.error(error));
   const tools = createToolRegistry(options.businessPackage);
 
@@ -53,7 +60,8 @@ export function createExecutor(options: ExecutorOptions): Executor {
       });
       return { taskId: lease.taskId, result: "waiting_user" };
     } catch (error) {
-      if (error instanceof LeaseLostError) {
+      // The signal is aborted only on lease loss; a tool may surface that as its own abort error.
+      if (error instanceof LeaseLostError || controller.signal.aborted) {
         return { taskId: lease.taskId, result: "lease_lost" };
       }
       // Anything else leaves the lease to expire, as if this executor had crashed.
@@ -65,14 +73,51 @@ export function createExecutor(options: ExecutorOptions): Executor {
 
   // Calls queue behind each other, so this executor never holds two leases at once.
   let previous: Promise<unknown> = Promise.resolve();
+  function runOnce(): Promise<TurnOutcome | undefined> {
+    const run = previous.then(async () => {
+      const lease = await claimTask(options.db, options.owner, leaseSeconds);
+      return lease === undefined ? undefined : runClaimed(lease);
+    });
+    previous = run.catch(() => {});
+    return run;
+  }
+
+  let loop: Promise<void> | undefined;
+  let stopping = false;
+  let wake = () => {};
+  async function poll(): Promise<void> {
+    while (!stopping) {
+      let outcome: TurnOutcome | undefined;
+      try {
+        outcome = await runOnce();
+      } catch (error) {
+        onError(error);
+      }
+      if (outcome === undefined && !stopping) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, pollIntervalMs);
+          wake = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+        });
+      }
+    }
+  }
+
   return {
-    runOnce() {
-      const run = previous.then(async () => {
-        const lease = await claimTask(options.db, options.owner, leaseSeconds);
-        return lease === undefined ? undefined : runClaimed(lease);
-      });
-      previous = run.catch(() => {});
-      return run;
+    runOnce,
+    start() {
+      if (loop === undefined) {
+        stopping = false;
+        loop = poll();
+      }
+    },
+    async stop() {
+      stopping = true;
+      wake();
+      await loop;
+      loop = undefined;
     },
   };
 }
