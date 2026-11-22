@@ -1,6 +1,7 @@
 import { runTurn } from "./agent-loop.ts";
 import type { BusinessPackage } from "./business-package.ts";
 import type { ExecutionDb } from "./db/database.ts";
+import type { FaultPointHook } from "./fault-points.ts";
 import { claimTask, type Lease, LeaseLostError, renewLease } from "./lease.ts";
 import type { ModelClient } from "./model.ts";
 import { createToolRegistry } from "./tool-registry.ts";
@@ -13,6 +14,12 @@ export interface ExecutorOptions {
   model: ModelClient;
   leaseSeconds?: number;
   heartbeatIntervalMs?: number;
+  // Business (logical) time for write deadlines (ADR 0002); the wall clock by default.
+  now?: () => Date;
+  // Δ, the deadline a write request carries, counted from when it is sent.
+  writeDeadlineMs?: number;
+  // Called at each named fault point; throwing there drops the turn like a crash.
+  onFaultPoint?: FaultPointHook;
   // How long `start` waits before claiming again when nothing was READY.
   pollIntervalMs?: number;
   // Errors that do not stop the executor: a failed heartbeat (retried) or a failed turn.
@@ -57,6 +64,9 @@ export function createExecutor(options: ExecutorOptions): Executor {
         tools,
         model: options.model,
         signal: controller.signal,
+        now: options.now ?? (() => new Date()),
+        writeDeadlineMs: options.writeDeadlineMs ?? 5000,
+        onFaultPoint: options.onFaultPoint ?? (() => {}),
       });
       return { taskId: lease.taskId, result: "waiting_user" };
     } catch (error) {

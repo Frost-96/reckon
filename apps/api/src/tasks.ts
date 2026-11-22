@@ -1,4 +1,5 @@
 import {
+  ConfirmationNotPendingError,
   createTask,
   type ExecutionDb,
   getTask,
@@ -37,7 +38,13 @@ function taskNotFound(): never {
 
 const taskParams = z.object({ taskId: z.string() });
 const createTaskBody = z.object({ customerId: z.string().min(1) }).strict();
-const customerMessageBody = z.object({ content: z.string().min(1) }).strict();
+const customerMessageBody = z
+  .object({
+    content: z.string().min(1),
+    // The seq of the agent message whose confirmation request this message confirms.
+    confirms: z.int().positive().optional(),
+  })
+  .strict();
 
 // Task ids are UUIDs; anything else cannot name a task.
 function taskIdOf(params: unknown): string {
@@ -61,16 +68,20 @@ export function registerTaskRoutes(app: FastifyInstance, db: ExecutionDb): void 
   });
 
   app.post("/tasks/:taskId/messages", async (request, reply) => {
-    const { content } = parseRequest(customerMessageBody, request.body);
+    const { content, confirms } = parseRequest(customerMessageBody, request.body);
     const taskId = taskIdOf(request.params);
     try {
-      return reply.code(202).send(await postCustomerMessage(db, taskId, content));
+      const options = confirms === undefined ? {} : { confirms };
+      return reply.code(202).send(await postCustomerMessage(db, taskId, content, options));
     } catch (error) {
       if (error instanceof TaskNotFoundError) {
         taskNotFound();
       }
       if (error instanceof TaskNotWaitingForCustomerError) {
         throw new ApiError(409, "TASK_NOT_WAITING_FOR_CUSTOMER", error.message);
+      }
+      if (error instanceof ConfirmationNotPendingError) {
+        throw new ApiError(409, "CONFIRMATION_NOT_PENDING", error.message);
       }
       throw error;
     }
@@ -82,11 +93,12 @@ export function registerTaskRoutes(app: FastifyInstance, db: ExecutionDb): void 
       taskNotFound();
     }
     const messages = await listUserVisibleMessages(db, taskId);
-    return messages.map(({ turn, seq, role, content, createdAt }) => ({
+    return messages.map(({ turn, seq, role, content, payload, createdAt }) => ({
       turn,
       seq,
       role,
       content,
+      payload,
       createdAt: createdAt.toISOString(),
     }));
   });
