@@ -1,0 +1,9 @@
+{
+  "name": "@reckon/executor",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@reckon/shared": "workspace:*",
+    "pg": "8.23.1"
+  }
+}

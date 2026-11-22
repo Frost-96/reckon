@@ -1,0 +1,10 @@
+{
+  "name": "@reckon/business-mock",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@reckon/shared": "workspace:*",
+    "fastify": "5.12.8",
+    "pg": "8.23.1"
+  }
+}
