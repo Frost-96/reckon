@@ -5,6 +5,7 @@ import type { ExecutionDb } from "./db/database.ts";
 import { notExecuted, type Question } from "./interaction.ts";
 import { checkpoint, type Lease, releaseToCustomer } from "./lease.ts";
 import type { ModelClient, ModelMessage, ModelRequest, ModelToolCall } from "./model.ts";
+import { recover } from "./recovery.ts";
 import {
   appendStep,
   type ModelStep,
@@ -37,6 +38,9 @@ interface TaskHistory {
 export async function runTurn(context: TurnContext): Promise<void> {
   const { db, lease, model, signal } = context;
   const history = await loadHistory(db, lease.taskId);
+  if (lease.needsRecovery) {
+    await recover(db, lease);
+  }
   for (;;) {
     signal.throwIfAborted();
     const [pendingCall, ...laterCalls] = nextPendingToolCalls(history.steps, lease.turn);
@@ -142,14 +146,20 @@ async function runToolCall(
     const outcome: ToolOutcome = { ok: true, value: question.result };
     return { step: toolStep(lease, call, seq, parameters, outcome), question };
   }
-  const outcome =
-    tool.kind === "write"
-      ? await runWriteTool(context, tool, parameters)
-      : await tool.run(parameters, {
-          taskId: lease.taskId,
-          customerId: lease.customerId,
-          signal: context.signal,
-        });
+  if (tool.kind === "write") {
+    const outcome = await runWriteTool(context, tool, parameters);
+    return { step: toolStep(lease, call, seq, parameters, outcome) };
+  }
+  const outcome = await tool.run(parameters, {
+    taskId: lease.taskId,
+    customerId: lease.customerId,
+    signal: context.signal,
+  });
+  await context.onFaultPoint({
+    name: "after_read_before_checkpoint",
+    taskId: lease.taskId,
+    tool: tool.name,
+  });
   return { step: toolStep(lease, call, seq, parameters, outcome) };
 }
 

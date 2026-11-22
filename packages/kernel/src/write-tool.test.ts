@@ -19,7 +19,11 @@ import {
   type ToolError,
   type WriteIntent,
 } from "./index.ts";
-import { type ExecutionTestDatabase, startExecutionTestDatabase } from "./testing.ts";
+import {
+  type ExecutionTestDatabase,
+  startExecutionTestDatabase,
+  sweepUntilExpired,
+} from "./testing.ts";
 
 let database: ExecutionTestDatabase;
 let db: ExecutionDb;
@@ -124,6 +128,9 @@ function lastToolResult(request: ModelRequest | undefined): unknown {
 }
 
 const booking = { roomId: "R7", nights: 2, guest: "Ada" };
+
+// For an executor the test drops: its lease runs out soon after its heartbeat stops.
+const shortLease = { leaseSeconds: 0.5, heartbeatIntervalMs: 100 };
 
 function requestConfirmation(parameters: unknown, message = "Book R7 for 2 nights?") {
   return { name: "request_confirmation", arguments: { tool: "book_room", parameters, message } };
@@ -311,6 +318,7 @@ test("an intent still PREPARED is sent with newly confirmed parameters under its
     owner: "executor-1",
     businessPackage,
     model: createScriptedModel([{ toolCalls: [{ name: "book_room", arguments: booking }] }]),
+    ...shortLease,
     onFaultPoint(point) {
       if (point.name === "after_prepared") {
         throw crash;
@@ -321,11 +329,8 @@ test("an intent still PREPARED is sent with newly confirmed parameters under its
   const [prepared] = await listWriteIntents(db, taskId);
   expect(prepared).toMatchObject({ operation: "hold_room", state: "PREPARED" });
 
-  // Stand-ins for the watchdog's takeover (#8) and a reconfirm disposition (#14).
-  await database.pool.query(
-    "UPDATE tasks SET state = 'READY', owner = NULL, lease_until = NULL WHERE id = $1",
-    [taskId],
-  );
+  await sweepUntilExpired(db, taskId);
+  // Stand-in for a reconfirm disposition (#14).
   await database.pool.query("UPDATE confirmations SET status = 'INVALIDATED' WHERE task_id = $1", [
     taskId,
   ]);
@@ -369,6 +374,7 @@ test("running the call again after its first operation took effect writes only t
     owner: "executor-1",
     businessPackage,
     model: createScriptedModel([{ toolCalls: [{ name: "book_room", arguments: booking }] }]),
+    ...shortLease,
     onFaultPoint(point) {
       if (point.name === "after_write_confirmed" && point.operation === "hold_room") {
         throw crash;
@@ -376,11 +382,7 @@ test("running the call again after its first operation took effect writes only t
     },
   });
   await expect(crashing.runOnce()).rejects.toThrow(crash);
-  // Stand-in for the watchdog's takeover (#8).
-  await database.pool.query(
-    "UPDATE tasks SET state = 'READY', owner = NULL, lease_until = NULL WHERE id = $1",
-    [taskId],
-  );
+  await sweepUntilExpired(db, taskId);
 
   const { model } = await runTurnWith(businessPackage, [{ content: "Booked." }], {
     owner: "executor-2",
@@ -393,6 +395,47 @@ test("running the call again after its first operation took effect writes only t
     hold_room: { holdId },
     issue_voucher: { voucherId: `V-${sent[1]?.operationId.slice(0, 8)}` },
   });
+  expect((await listWriteIntents(db, taskId)).map((intent) => intent.state)).toEqual([
+    "CONFIRMED",
+    "CONFIRMED",
+  ]);
+});
+
+test("an instance stalled after PREPARED that wakes after the takeover never sends the write", async () => {
+  const { sent, businessPackage } = bookingService();
+  const taskId = await confirmedTask(businessPackage, booking);
+  let frozen!: () => void;
+  let wake!: () => void;
+  const reachedFaultPoint = new Promise<void>((resolve) => {
+    frozen = resolve;
+  });
+  const woken = new Promise<void>((resolve) => {
+    wake = resolve;
+  });
+  // Stalled with its heartbeat, as under SIGSTOP, so its lease runs out.
+  const zombie = createExecutor({
+    db,
+    owner: "executor-1",
+    businessPackage,
+    model: createScriptedModel([{ toolCalls: [{ name: "book_room", arguments: booking }] }]),
+    leaseSeconds: 1,
+    heartbeatIntervalMs: 60_000,
+    async onFaultPoint(point) {
+      if (point.name === "after_prepared") {
+        frozen();
+        await woken;
+      }
+    },
+  });
+  const zombieTurn = zombie.runOnce();
+  await reachedFaultPoint;
+
+  await sweepUntilExpired(db, taskId);
+  await runTurnWith(businessPackage, [{ content: "Booked." }], { owner: "executor-2" });
+  wake();
+
+  expect(await zombieTurn).toEqual({ taskId, result: "lease_lost" });
+  expect(sent.map((write) => write.operation)).toEqual(["hold_room", "issue_voucher"]);
   expect((await listWriteIntents(db, taskId)).map((intent) => intent.state)).toEqual([
     "CONFIRMED",
     "CONFIRMED",

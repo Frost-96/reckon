@@ -28,6 +28,7 @@ export {
 } from "./executor.ts";
 export type { FaultPoint, FaultPointHook } from "./fault-points.ts";
 export { LeaseLostError } from "./lease.ts";
+export { type LeaseEvent, type LeaseEventKind, listLeaseEvents } from "./lease-events.ts";
 export type {
   ModelCallOptions,
   ModelClient,
@@ -69,6 +70,13 @@ export {
   type TaskState,
   type UserVisibleMessage,
 } from "./tasks.ts";
+export {
+  createWatchdog,
+  type ExpiredLease,
+  expireLeases,
+  type Watchdog,
+  type WatchdogOptions,
+} from "./watchdog.ts";
 export {
   listWriteIntents,
   type WriteIntent,
