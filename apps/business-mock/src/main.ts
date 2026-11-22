@@ -3,7 +3,7 @@ import pg from "pg";
 import { buildApp } from "./app.ts";
 
 const pool = new pg.Pool({ connectionString: requireEnv("BUSINESS_DATABASE_URL") });
-const app = buildApp(pool);
+const app = buildApp({ pool, adminEnabled: process.env.ADMIN_API_ENABLED === "true" });
 
 await app.listen({ host: "0.0.0.0", port: Number(requireEnv("PORT")) });
 

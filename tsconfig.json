@@ -17,5 +17,11 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true
   },
-  "include": ["packages/*/src", "apps/*/src", "scripts", "vitest.config.ts"]
+  "include": [
+    "packages/*/src",
+    "apps/*/src",
+    "apps/*/drizzle.config.ts",
+    "scripts",
+    "vitest.config.ts"
+  ]
 }

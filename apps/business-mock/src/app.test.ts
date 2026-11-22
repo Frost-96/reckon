@@ -16,7 +16,7 @@ afterEach(async () => {
 });
 
 test("health is ok when the business database is reachable", async () => {
-  const app = buildApp(poolFor(requireEnv("BUSINESS_DATABASE_URL")));
+  const app = buildApp({ pool: poolFor(requireEnv("BUSINESS_DATABASE_URL")) });
 
   const response = await app.inject({ method: "GET", url: "/health" });
 
@@ -25,7 +25,7 @@ test("health is ok when the business database is reachable", async () => {
 });
 
 test("health is unavailable when the business database is unreachable", async () => {
-  const app = buildApp(poolFor("postgres://business:business@127.0.0.1:1/business"));
+  const app = buildApp({ pool: poolFor("postgres://business:business@127.0.0.1:1/business") });
 
   const response = await app.inject({ method: "GET", url: "/health" });
 

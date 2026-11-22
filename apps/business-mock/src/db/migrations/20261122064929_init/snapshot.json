@@ -1,0 +1,886 @@
+{
+  "type": "base",
+  "version": "10",
+  "dialect": "postgres",
+  "id": "394e9e7e-089b-4d62-976b-6129ca84cdf6",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "aftersales_orders"],
+      "writes": [
+        "s|tbl|public.aftersales_orders",
+        "n|tbl|public.aftersales_orders",
+        "e|tbl|public.aftersales_orders",
+        "n|rel|public.aftersales_orders",
+        "n|type|public.aftersales_orders",
+        "n|rel|public.aftersales_orders_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "aftersales_policy"],
+      "writes": [
+        "s|tbl|public.aftersales_policy",
+        "n|tbl|public.aftersales_policy",
+        "e|tbl|public.aftersales_policy",
+        "n|rel|public.aftersales_policy",
+        "n|type|public.aftersales_policy",
+        "n|rel|public.aftersales_policy_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "idempotency_keys"],
+      "writes": [
+        "s|tbl|public.idempotency_keys",
+        "n|tbl|public.idempotency_keys",
+        "e|tbl|public.idempotency_keys",
+        "n|rel|public.idempotency_keys",
+        "n|type|public.idempotency_keys",
+        "n|rel|public.idempotency_keys_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "mock_config"],
+      "writes": [
+        "s|tbl|public.mock_config",
+        "n|tbl|public.mock_config",
+        "e|tbl|public.mock_config",
+        "n|rel|public.mock_config",
+        "n|type|public.mock_config",
+        "n|rel|public.mock_config_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "order_lines"],
+      "writes": [
+        "s|tbl|public.order_lines",
+        "n|tbl|public.order_lines",
+        "e|tbl|public.order_lines",
+        "n|rel|public.order_lines",
+        "n|type|public.order_lines",
+        "n|rel|public.order_lines_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "orders"],
+      "writes": [
+        "s|tbl|public.orders",
+        "n|tbl|public.orders",
+        "e|tbl|public.orders",
+        "n|rel|public.orders",
+        "n|type|public.orders",
+        "n|rel|public.orders_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "return_shipments"],
+      "writes": [
+        "s|tbl|public.return_shipments",
+        "n|tbl|public.return_shipments",
+        "e|tbl|public.return_shipments",
+        "n|rel|public.return_shipments",
+        "n|type|public.return_shipments",
+        "n|rel|public.return_shipments_pkey",
+        "n|rel|public.return_shipments_aftersales_id_key"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "aftersales_orders",
+        "aftersales_orders_one_in_progress_per_line"
+      ],
+      "writes": [
+        "s|idx|public.aftersales_orders_one_in_progress_per_line",
+        "n|idx|public.aftersales_orders_one_in_progress_per_line",
+        "e|idx|public.aftersales_orders_one_in_progress_per_line",
+        "n|rel|public.aftersales_orders_one_in_progress_per_line"
+      ],
+      "reads": [
+        "n|tbl|public.aftersales_orders",
+        "n|sch|public",
+        "n|col|public.aftersales_orders.order_id",
+        "n|col|public.aftersales_orders.line_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "aftersales_orders"],
+      "writes": [
+        "s|fk|public.aftersales_orders.aftersales_orders_order_id_line_id_order_lines_order_id_id_fkey",
+        "n|fk|public.aftersales_orders.aftersales_orders_order_id_line_id_order_lines_order_id_id_fkey",
+        "e|fk|public.aftersales_orders.aftersales_orders_order_id_line_id_order_lines_order_id_id_fkey",
+        "n|con|public.aftersales_orders.aftersales_orders_order_id_line_id_order_lines_order_id_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.aftersales_orders",
+        "n|sch|public",
+        "n|tbl|public.order_lines",
+        "n|sch|public",
+        "n|col|public.aftersales_orders.order_id",
+        "n|col|public.aftersales_orders.line_id",
+        "n|col|public.order_lines.order_id",
+        "n|col|public.order_lines.id",
+        "e|uniqueness|public.order_lines.id.order_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "order_lines"],
+      "writes": [
+        "s|fk|public.order_lines.order_lines_order_id_orders_id_fkey",
+        "n|fk|public.order_lines.order_lines_order_id_orders_id_fkey",
+        "e|fk|public.order_lines.order_lines_order_id_orders_id_fkey",
+        "n|con|public.order_lines.order_lines_order_id_orders_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.order_lines",
+        "n|sch|public",
+        "n|tbl|public.orders",
+        "n|sch|public",
+        "n|col|public.order_lines.order_id",
+        "n|col|public.orders.id",
+        "e|uniqueness|public.orders.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "return_shipments"],
+      "writes": [
+        "s|fk|public.return_shipments.return_shipments_aftersales_id_aftersales_orders_id_fkey",
+        "n|fk|public.return_shipments.return_shipments_aftersales_id_aftersales_orders_id_fkey",
+        "e|fk|public.return_shipments.return_shipments_aftersales_id_aftersales_orders_id_fkey",
+        "n|con|public.return_shipments.return_shipments_aftersales_id_aftersales_orders_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.return_shipments",
+        "n|sch|public",
+        "n|tbl|public.aftersales_orders",
+        "n|sch|public",
+        "n|col|public.return_shipments.aftersales_id",
+        "n|col|public.aftersales_orders.id",
+        "e|uniqueness|public.aftersales_orders.id"
+      ]
+    }
+  ],
+  "ddl": [
+    {
+      "schema": "public",
+      "name": "aftersales_orders",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "aftersales_policy",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "idempotency_keys",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "mock_config",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "order_lines",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "orders",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "name": "return_shipments",
+      "isRlsEnabled": false,
+      "entityType": "tables"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "order_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "line_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "quantity",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "reason",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "status",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "return_fee_cents",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "client_ref",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "deadline",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "return_window_days",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "return_fee_cents",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "endpoint",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "key",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "request_hash",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "status_code",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "response",
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "id",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "scenario_seed",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "idempotency_mode",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "check_fee",
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "processing_delay_ms",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "order_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "product_name",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "quantity",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "orders",
+      "name": "id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "orders",
+      "name": "customer_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "orders",
+      "name": "status",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "orders",
+      "name": "delivered_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "aftersales_id",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "client_ref",
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "deadline",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "aftersales_orders_one_in_progress_per_line",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "order_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "line_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"status\" = 'in_progress'",
+      "with": "",
+      "method": "btree",
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "aftersales_orders_order_id_line_id_order_lines_order_id_id_fkey",
+      "nameExplicit": false,
+      "columns": ["order_id", "line_id"],
+      "schemaTo": "public",
+      "tableTo": "order_lines",
+      "columnsTo": ["order_id", "id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "order_lines_order_id_orders_id_fkey",
+      "nameExplicit": false,
+      "columns": ["order_id"],
+      "schemaTo": "public",
+      "tableTo": "orders",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "return_shipments_aftersales_id_aftersales_orders_id_fkey",
+      "nameExplicit": false,
+      "columns": ["aftersales_id"],
+      "schemaTo": "public",
+      "tableTo": "aftersales_orders",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "entityType": "fks"
+    },
+    {
+      "schema": "public",
+      "table": "idempotency_keys",
+      "name": "idempotency_keys_pkey",
+      "columns": ["endpoint", "key"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "order_lines_pkey",
+      "columns": ["order_id", "id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "aftersales_orders_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "aftersales_policy_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "mock_config_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "orders",
+      "name": "orders_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "return_shipments_pkey",
+      "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "schema": "public",
+      "table": "return_shipments",
+      "name": "return_shipments_aftersales_id_key",
+      "nameExplicit": false,
+      "columns": ["aftersales_id"],
+      "nullsNotDistinct": false,
+      "entityType": "uniques"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_orders",
+      "name": "aftersales_orders_quantity_positive",
+      "value": "\"quantity\" > 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "aftersales_policy_single_row",
+      "value": "\"id\" = 1",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "aftersales_policy_window_non_negative",
+      "value": "\"return_window_days\" >= 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "aftersales_policy",
+      "name": "aftersales_policy_fee_non_negative",
+      "value": "\"return_fee_cents\" >= 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "mock_config_single_row",
+      "value": "\"id\" = 1",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "mock_config",
+      "name": "mock_config_processing_delay_non_negative",
+      "value": "\"processing_delay_ms\" >= 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "order_lines",
+      "name": "order_lines_quantity_positive",
+      "value": "\"quantity\" > 0",
+      "entityType": "checks"
+    }
+  ]
+}
