@@ -1,7 +1,8 @@
 name: reckon
 
+# APP_IMAGE_TAG: parallel stacks built from different checkouts each use their own tag.
 x-app: &app
-  image: reckon-app:dev
+  image: reckon-app:${APP_IMAGE_TAG:-dev}
   build: .
   init: true
   depends_on:
@@ -53,6 +54,13 @@ services:
     environment:
       PORT: "3000"
       EXECUTION_DATABASE_URL: postgres://execution:${EXECUTION_DB_PASSWORD:-execution}@postgres:5432/execution
+      BUSINESS_SERVICE_URL: http://business-mock:3000
+    # The API applies the execution database's migrations before it reports healthy.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     healthcheck:
       <<: *app-healthcheck
       test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
@@ -64,6 +72,8 @@ services:
     environment:
       PORT: "3000"
       BUSINESS_DATABASE_URL: postgres://business:${BUSINESS_DB_PASSWORD:-business}@postgres:5432/business
+      # The evaluator resets scenario data through it.
+      ADMIN_API_ENABLED: "true"
     ports:
       - "${BUSINESS_MOCK_PORT:-3100}:3000"
     healthcheck:

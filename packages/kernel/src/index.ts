@@ -24,6 +24,7 @@ export {
   createExecutor,
   type Executor,
   type ExecutorOptions,
+  type ModelForTask,
   type TurnOutcome,
 } from "./executor.ts";
 export type { FaultPoint, FaultPointHook } from "./fault-points.ts";
@@ -40,7 +41,17 @@ export type {
   ModelUsage,
 } from "./model.ts";
 export {
+  createRun,
+  getRun,
+  modelOfRun,
+  type Run,
+  type RunConfig,
+  RunNotFoundError,
+  runConfigSchema,
+} from "./runs.ts";
+export {
   createScriptedModel,
+  createTurnScriptedModel,
   type ScriptedModel,
   type ScriptedResponse,
   type ScriptedStep,
@@ -58,6 +69,7 @@ export {
   appendUserVisibleMessage,
   ConfirmationNotPendingError,
   type CustomerMessageOptions,
+  closeTask,
   createTask,
   getTask,
   listUserVisibleMessages,

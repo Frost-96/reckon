@@ -1,10 +1,12 @@
 import {
   ConfirmationNotPendingError,
+  closeTask,
   createTask,
   type ExecutionDb,
   getTask,
   listUserVisibleMessages,
   postCustomerMessage,
+  RunNotFoundError,
   type Task,
   TaskNotFoundError,
   TaskNotWaitingForCustomerError,
@@ -37,7 +39,13 @@ function taskNotFound(): never {
 }
 
 const taskParams = z.object({ taskId: z.string() });
-const createTaskBody = z.object({ customerId: z.string().min(1) }).strict();
+const createTaskBody = z
+  .object({
+    customerId: z.string().min(1),
+    // The experiment run the task belongs to; the evaluator's simulated user sets it.
+    runId: z.uuid().optional(),
+  })
+  .strict();
 const customerMessageBody = z
   .object({
     content: z.string().min(1),
@@ -53,13 +61,41 @@ function taskIdOf(params: unknown): string {
 }
 
 function taskView(task: Task) {
-  return { id: task.id, customerId: task.customerId, state: task.state, turn: task.turn };
+  return {
+    id: task.id,
+    customerId: task.customerId,
+    runId: task.runId,
+    state: task.state,
+    turn: task.turn,
+  };
+}
+
+// Maps the kernel's refusals of a customer action on a task to API errors.
+function refusal(error: unknown): never {
+  if (error instanceof TaskNotFoundError) {
+    taskNotFound();
+  }
+  if (error instanceof TaskNotWaitingForCustomerError) {
+    throw new ApiError(409, "TASK_NOT_WAITING_FOR_CUSTOMER", error.message);
+  }
+  if (error instanceof ConfirmationNotPendingError) {
+    throw new ApiError(409, "CONFIRMATION_NOT_PENDING", error.message);
+  }
+  throw error;
 }
 
 export function registerTaskRoutes(app: FastifyInstance, db: ExecutionDb): void {
   app.post("/tasks", async (request, reply) => {
-    const { customerId } = parseRequest(createTaskBody, request.body);
-    return reply.code(201).send(taskView(await createTask(db, { customerId })));
+    const { customerId, runId } = parseRequest(createTaskBody, request.body);
+    try {
+      const task = await createTask(db, { customerId, ...(runId === undefined ? {} : { runId }) });
+      return reply.code(201).send(taskView(task));
+    } catch (error) {
+      if (error instanceof RunNotFoundError) {
+        throw new ApiError(422, "RUN_NOT_FOUND", error.message);
+      }
+      throw error;
+    }
   });
 
   app.get("/tasks/:taskId", async (request) => {
@@ -74,16 +110,17 @@ export function registerTaskRoutes(app: FastifyInstance, db: ExecutionDb): void 
       const options = confirms === undefined ? {} : { confirms };
       return reply.code(202).send(await postCustomerMessage(db, taskId, content, options));
     } catch (error) {
-      if (error instanceof TaskNotFoundError) {
-        taskNotFound();
-      }
-      if (error instanceof TaskNotWaitingForCustomerError) {
-        throw new ApiError(409, "TASK_NOT_WAITING_FOR_CUSTOMER", error.message);
-      }
-      if (error instanceof ConfirmationNotPendingError) {
-        throw new ApiError(409, "CONFIRMATION_NOT_PENDING", error.message);
-      }
-      throw error;
+      refusal(error);
+    }
+  });
+
+  // The customer ends the session.
+  app.post("/tasks/:taskId/close", async (request) => {
+    const taskId = taskIdOf(request.params);
+    try {
+      return taskView(await closeTask(db, taskId));
+    } catch (error) {
+      refusal(error);
     }
   });
 

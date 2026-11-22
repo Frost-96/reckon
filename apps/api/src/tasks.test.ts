@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   type BusinessPackage,
   createExecutor,
+  createRun,
   createScriptedModel,
   defineWriteTool,
 } from "@reckon/kernel";
@@ -49,7 +50,13 @@ test("a customer starts a task and their message queues it for an executor", asy
   expect(sent.statusCode).toBe(202);
   expect(sent.json()).toEqual({ turn: 1 });
   const task = await app.inject({ method: "GET", url: `/tasks/${taskId}` });
-  expect(task.json()).toEqual({ id: taskId, customerId: "C1", state: "READY", turn: 1 });
+  expect(task.json()).toEqual({
+    id: taskId,
+    customerId: "C1",
+    runId: null,
+    state: "READY",
+    turn: 1,
+  });
 });
 
 test("the customer reads the agent's reply once an executor has run the turn", async () => {
@@ -85,11 +92,62 @@ test("a message is refused while the task is not waiting for the customer", asyn
   expect(second.json()).toMatchObject({ error: { code: "TASK_NOT_WAITING_FOR_CUSTOMER" } });
 });
 
+test("a customer ends the session between turns, and the closed task takes no more messages", async () => {
+  const taskId = await startTask();
+
+  const closed = await app.inject({ method: "POST", url: `/tasks/${taskId}/close` });
+
+  expect(closed.statusCode).toBe(200);
+  expect(closed.json()).toMatchObject({ id: taskId, state: "CLOSED" });
+  const sent = await sendMessage(taskId, "还在吗？");
+  expect(sent.statusCode).toBe(409);
+  expect(sent.json()).toMatchObject({ error: { code: "TASK_NOT_WAITING_FOR_CUSTOMER" } });
+});
+
+test("a session cannot be ended while its turn waits for an executor", async () => {
+  const taskId = await startTask();
+  await sendMessage(taskId, "我想退货");
+
+  const closed = await app.inject({ method: "POST", url: `/tasks/${taskId}/close` });
+
+  expect(closed.statusCode).toBe(409);
+  expect(closed.json()).toMatchObject({ error: { code: "TASK_NOT_WAITING_FOR_CUSTOMER" } });
+});
+
+test("a task started for an experiment run is linked to it", async () => {
+  const run = await createRun(database.db, {
+    scenario: "greeting",
+    config: { model: { kind: "scripted", turns: [[{ content: "您好" }]] } },
+  });
+
+  const created = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: { customerId: "C1", runId: run.id },
+  });
+
+  expect(created.statusCode).toBe(201);
+  const task = await app.inject({ method: "GET", url: `/tasks/${created.json().id}` });
+  expect(task.json()).toMatchObject({ customerId: "C1", runId: run.id });
+});
+
+test("a task cannot be started for a run that does not exist", async () => {
+  const created = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: { customerId: "C1", runId: randomUUID() },
+  });
+
+  expect(created.statusCode).toBe(422);
+  expect(created.json()).toMatchObject({ error: { code: "RUN_NOT_FOUND" } });
+});
+
 test.each([randomUUID(), "not-a-task-id"])("task %s is not found", async (taskId) => {
   for (const response of [
     await app.inject({ method: "GET", url: `/tasks/${taskId}` }),
     await app.inject({ method: "GET", url: `/tasks/${taskId}/messages` }),
     await sendMessage(taskId, "hello"),
+    await app.inject({ method: "POST", url: `/tasks/${taskId}/close` }),
   ]) {
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: { code: "TASK_NOT_FOUND" } });

@@ -1,5 +1,21 @@
 {
   "name": "@reckon/evaluator",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@reckon/business-mock": "workspace:*",
+    "@reckon/kernel": "workspace:*",
+    "@reckon/shared": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.6",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@reckon/aftersales": "workspace:*",
+    "@reckon/api": "workspace:*",
+    "fastify": "5.12.8"
+  }
 }
