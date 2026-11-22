@@ -1,6 +1,8 @@
 import type { BusinessPackage } from "@reckon/kernel";
 import { createBusinessService } from "./business-service.ts";
 import { systemPrompt } from "./prompt.ts";
+import { queryAftersalesTool } from "./query-aftersales.ts";
+import { queryAftersalesRulesTool } from "./query-aftersales-rules.ts";
 import { queryOrderTool } from "./query-order.ts";
 import { submitReturnTool } from "./submit-return.ts";
 
@@ -11,5 +13,13 @@ export interface AftersalesOptions {
 
 export function createAftersalesPackage(options: AftersalesOptions): BusinessPackage {
   const business = createBusinessService(options.businessServiceUrl);
-  return { systemPrompt, tools: [queryOrderTool(business), submitReturnTool(business)] };
+  return {
+    systemPrompt,
+    tools: [
+      queryOrderTool(business),
+      queryAftersalesRulesTool(business),
+      queryAftersalesTool(business),
+      submitReturnTool(business),
+    ],
+  };
 }
