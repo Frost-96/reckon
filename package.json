@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "docker compose --profile dev up --build",
     "db:up": "docker compose up --detach --wait postgres",
-    "db:migrate": "pnpm db:up && pnpm --filter @reckon/business-mock db:migrate",
+    "db:migrate": "pnpm db:up && pnpm --filter @reckon/business-mock db:migrate && pnpm --filter @reckon/kernel db:migrate",
     "typecheck": "tsc",
     "lint": "biome ci .",
     "format": "biome check --write .",
