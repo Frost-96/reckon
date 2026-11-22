@@ -2,6 +2,9 @@
   "name": "@reckon/api",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/app.ts"
+  },
   "dependencies": {
     "@reckon/kernel": "workspace:*",
     "@reckon/shared": "workspace:*",

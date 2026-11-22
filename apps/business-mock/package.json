@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./schema": "./src/db/schema.ts",
     "./test-support": "./src/test-support.ts"
   },
   "scripts": {

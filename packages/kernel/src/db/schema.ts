@@ -15,7 +15,7 @@ const pgTable = snakeCase.table;
 
 const timestamptz = () => timestamp({ withTimezone: true, mode: "date" });
 
-export const taskStates = ["READY", "RUNNING", "WAITING_USER"] as const;
+export const taskStates = ["READY", "RUNNING", "WAITING_USER", "CLOSED"] as const;
 export const stepKinds = ["model", "tool"] as const;
 export const stepStatuses = ["ok", "error"] as const;
 export const messageRoles = ["customer", "agent"] as const;
@@ -32,11 +32,22 @@ export const writeIntentStates = [
   "CANCELLED",
 ] as const;
 
+// One run of a scenario under one experiment configuration; its tasks link to it.
+export const runs = pgTable("runs", {
+  id: uuid().primaryKey().defaultRandom(),
+  scenario: text().notNull(),
+  // A RunConfig, read by the executors serving the run's tasks.
+  config: jsonb().notNull(),
+  createdAt: timestamptz().notNull().defaultNow(),
+});
+
 export const tasks = pgTable(
   "tasks",
   {
     id: uuid().primaryKey().defaultRandom(),
     customerId: text().notNull(),
+    // Null for a task outside any experiment run.
+    runId: uuid().references(() => runs.id),
     state: text({ enum: taskStates }).notNull(),
     // Number of the latest turn; 0 until the first customer message.
     turn: integer().notNull().default(0),

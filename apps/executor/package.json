@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@reckon/aftersales": "workspace:*",
+    "@reckon/kernel": "workspace:*",
     "@reckon/shared": "workspace:*",
     "pg": "8.23.1"
   }

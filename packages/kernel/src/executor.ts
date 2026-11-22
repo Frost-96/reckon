@@ -6,12 +6,19 @@ import { claimTask, type Lease, LeaseLostError, renewLease } from "./lease.ts";
 import type { ModelClient } from "./model.ts";
 import { createToolRegistry } from "./tool-registry.ts";
 
+// Chooses the model for a claimed task, e.g. the scripted fake its run brings (modelOfRun).
+export type ModelForTask = (task: {
+  taskId: string;
+  runId: string | null;
+}) => ModelClient | Promise<ModelClient>;
+
 export interface ExecutorOptions {
   db: ExecutionDb;
   // Identifies this executor instance as the lease owner.
   owner: string;
   businessPackage: BusinessPackage;
-  model: ModelClient;
+  // One model for every task, or one chosen per claimed task.
+  model: ModelClient | ModelForTask;
   leaseSeconds?: number;
   heartbeatIntervalMs?: number;
   // Business (logical) time for write deadlines (ADR 0002); the wall clock by default.
@@ -57,12 +64,16 @@ export function createExecutor(options: ExecutorOptions): Executor {
       onError,
     );
     try {
+      const model =
+        typeof options.model === "function"
+          ? await options.model({ taskId: lease.taskId, runId: lease.runId })
+          : options.model;
       await runTurn({
         db: options.db,
         lease,
         systemPrompt: options.businessPackage.systemPrompt,
         tools,
-        model: options.model,
+        model,
         signal: controller.signal,
         now: options.now ?? (() => new Date()),
         writeDeadlineMs: options.writeDeadlineMs ?? 5000,

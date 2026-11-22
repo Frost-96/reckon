@@ -5,6 +5,7 @@ import { tasks } from "./db/schema.ts";
 export interface Lease {
   taskId: string;
   customerId: string;
+  runId: string | null;
   turn: number;
   owner: string;
   version: number;
@@ -57,6 +58,7 @@ export async function claimTask(
     return {
       taskId: claimed.id,
       customerId: claimed.customerId,
+      runId: claimed.runId,
       turn: claimed.turn,
       owner,
       version: claimed.version,

@@ -2,6 +2,7 @@ import { asc, eq, sql } from "drizzle-orm";
 import { confirmByCustomer } from "./confirmations.ts";
 import type { ExecutionDb, ExecutionQueries } from "./db/database.ts";
 import { type messageRoles, type taskStates, tasks, userVisibleMessages } from "./db/schema.ts";
+import { getRun, RunNotFoundError } from "./runs.ts";
 
 export type TaskState = (typeof taskStates)[number];
 export type Task = typeof tasks.$inferSelect;
@@ -50,11 +51,18 @@ export class TaskNotWaitingForCustomerError extends Error {
   }
 }
 
-// A new task waits for the customer's first message.
-export async function createTask(db: ExecutionDb, input: { customerId: string }): Promise<Task> {
+// A new task waits for the customer's first message. A task of an experiment run names it.
+export async function createTask(
+  db: ExecutionDb,
+  input: { customerId: string; runId?: string },
+): Promise<Task> {
+  // Runs are never deleted, so one found here is still there at the insert.
+  if (input.runId !== undefined && (await getRun(db, input.runId)) === undefined) {
+    throw new RunNotFoundError(input.runId);
+  }
   const [task] = await db
     .insert(tasks)
-    .values({ customerId: input.customerId, state: "WAITING_USER" })
+    .values({ customerId: input.customerId, runId: input.runId ?? null, state: "WAITING_USER" })
     .returning();
   if (task === undefined) {
     throw new Error("Task insert returned no row");
@@ -121,6 +129,31 @@ export async function postCustomerMessage(
       .set({ state: "READY", turn, updatedAt: sql`now()` })
       .where(eq(tasks.id, taskId));
     return { turn };
+  });
+}
+
+// The customer ends the session; only between turns, so no executor holds the task.
+export async function closeTask(db: ExecutionDb, taskId: string): Promise<Task> {
+  return db.transaction(async (tx) => {
+    const [task] = await tx.select().from(tasks).where(eq(tasks.id, taskId)).for("update");
+    if (task === undefined) {
+      throw new TaskNotFoundError(taskId);
+    }
+    if (task.state === "CLOSED") {
+      return task;
+    }
+    if (task.state !== "WAITING_USER") {
+      throw new TaskNotWaitingForCustomerError(taskId, task.state);
+    }
+    const [closed] = await tx
+      .update(tasks)
+      .set({ state: "CLOSED", updatedAt: sql`now()` })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    if (closed === undefined) {
+      throw new Error(`Closed task ${taskId} vanished`);
+    }
+    return closed;
   });
 }
 
