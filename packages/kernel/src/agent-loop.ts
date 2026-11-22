@@ -125,8 +125,13 @@ async function runToolCall(
     // Tool + parameters, the key under which identical reads are deduplicated.
     inputHash: canonicalHash({ name: call.name, parameters }),
     input: { toolCallId: call.id, name: call.name, arguments: call.arguments },
-    output: outcome.ok ? outcome.value : { error: outcome.error },
+    // In its stored JSON form, so the live context equals the one rebuilt from the log.
+    output: asStoredJson(outcome.ok ? outcome.value : { error: outcome.error }),
   };
+}
+
+function asStoredJson(value: unknown): unknown {
+  return JSON.parse(JSON.stringify(value) ?? "null");
 }
 
 type ParsedToolCall =
