@@ -12,7 +12,11 @@ import {
   readStepLog,
   type ScriptedStep,
 } from "./index.ts";
-import { type ExecutionTestDatabase, startExecutionTestDatabase } from "./testing.ts";
+import {
+  type ExecutionTestDatabase,
+  startExecutionTestDatabase,
+  sweepUntilExpired,
+} from "./testing.ts";
 
 let database: ExecutionTestDatabase;
 let db: ExecutionDb;
@@ -110,19 +114,30 @@ test("heartbeats keep renewing the lease while a step is still running", async (
 
 test("a checkpoint under a version that has moved on is rejected as a whole", async () => {
   const taskId = await taskWithMessage("hi");
-  const held = heldStep({ content: "stale reply" });
+  const stale = heldStep({ content: "stale reply" });
+  // Its heartbeat stalls along with the step, so its lease runs out and a peer takes over.
+  const staleTurn = executor([stale.step], {
+    leaseSeconds: 1,
+    heartbeatIntervalMs: 60_000,
+  }).runOnce();
+  await stale.entered;
+  await sweepUntilExpired(db, taskId);
 
-  const turn = executor([held.step]).runOnce();
-  await held.entered;
-  // Stand-in for a takeover (watchdog + peer claim arrive with #8): same owner name, as after
-  // a restart, so only the version tells the two holders apart.
-  await database.pool.query("UPDATE tasks SET version = version + 1 WHERE id = $1", [taskId]);
-  held.release();
+  // Same owner name, as after a restart, and the new lease is live: only the version tells the
+  // two holders apart.
+  const current = heldStep({ content: "current reply" });
+  const currentTurn = executor([current.step]).runOnce();
+  await current.entered;
+  stale.release();
+  expect(await staleTurn).toEqual({ taskId, result: "lease_lost" });
+  current.release();
+  expect(await currentTurn).toEqual({ taskId, result: "waiting_user" });
 
-  expect(await turn).toEqual({ taskId, result: "lease_lost" });
-  expect(await readStepLog(db, taskId)).toEqual([]);
-  expect(await listUserVisibleMessages(db, taskId)).toMatchObject([{ role: "customer" }]);
-  expect(await getTask(db, taskId)).toMatchObject({ state: "RUNNING", version: 2 });
+  expect(await readStepLog(db, taskId)).toMatchObject([{ kind: "model", attempt: 2 }]);
+  expect(await listUserVisibleMessages(db, taskId)).toMatchObject([
+    { role: "customer" },
+    { role: "agent", content: "current reply" },
+  ]);
 });
 
 test("a heartbeat that finds the lease gone abandons the step still in flight", async () => {
@@ -137,12 +152,21 @@ test("a heartbeat that finds the lease gone abandons the step still in flight", 
     return { content: "never sent" };
   };
 
-  const turn = executor([untilAborted], { heartbeatIntervalMs: 100 }).runOnce();
+  // The first heartbeat comes only after the lease has run out, as after a long pause.
+  const turn = executor([untilAborted], {
+    leaseSeconds: 0.5,
+    heartbeatIntervalMs: 1500,
+  }).runOnce();
   await enteredPromise;
-  await database.pool.query("UPDATE tasks SET version = version + 1 WHERE id = $1", [taskId]);
+  await sweepUntilExpired(db, taskId);
+  const peer = heldStep({ content: "peer reply" });
+  const peerTurn = executor([peer.step], { owner: "executor-2" }).runOnce();
+  await peer.entered;
 
   expect(await turn).toEqual({ taskId, result: "lease_lost" });
-  expect(await readStepLog(db, taskId)).toEqual([]);
+  peer.release();
+  expect(await peerTurn).toEqual({ taskId, result: "waiting_user" });
+  expect(await readStepLog(db, taskId)).toMatchObject([{ kind: "model", attempt: 2 }]);
 });
 
 test("a checkpoint after the lease ran out on the database clock is rejected", async () => {

@@ -1,6 +1,7 @@
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import type { ExecutionDb, ExecutionTx } from "./db/database.ts";
 import { tasks } from "./db/schema.ts";
+import { recordLeaseEvent } from "./lease-events.ts";
 
 export interface Lease {
   taskId: string;
@@ -8,6 +9,8 @@ export interface Lease {
   turn: number;
   owner: string;
   version: number;
+  // The previous holder's lease ran out: this holder recovers the task before going on.
+  needsRecovery: boolean;
 }
 
 export class LeaseLostError extends Error {
@@ -54,12 +57,19 @@ export async function claimTask(
     if (claimed === undefined) {
       throw new Error(`Claimed task ${candidate.id} vanished`);
     }
+    await recordLeaseEvent(tx, {
+      taskId: claimed.id,
+      version: claimed.version,
+      kind: "claimed",
+      owner,
+    });
     return {
       taskId: claimed.id,
       customerId: claimed.customerId,
       turn: claimed.turn,
       owner,
       version: claimed.version,
+      needsRecovery: claimed.needsRecovery,
     };
   });
 }

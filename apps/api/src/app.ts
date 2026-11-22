@@ -1,10 +1,16 @@
-import { connectExecutionDb } from "@reckon/kernel";
+import { connectExecutionDb, createWatchdog } from "@reckon/kernel";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
 import { ApiError, registerTaskRoutes } from "./tasks.ts";
 
-export function buildApp(pool: pg.Pool): FastifyInstance {
+export interface AppOptions {
+  // How often the lease watchdog sweeps while the app is up.
+  watchdogScanIntervalMs?: number;
+}
+
+export function buildApp(pool: pg.Pool, options: AppOptions = {}): FastifyInstance {
   const app = Fastify();
+  const db = connectExecutionDb(pool);
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ApiError) {
@@ -24,7 +30,16 @@ export function buildApp(pool: pg.Pool): FastifyInstance {
     }
   });
 
-  registerTaskRoutes(app, connectExecutionDb(pool));
+  registerTaskRoutes(app, db);
+
+  // The lease watchdog lives in the task API, apart from the executors whose leases it watches.
+  const { watchdogScanIntervalMs } = options;
+  const watchdog = createWatchdog({
+    db,
+    ...(watchdogScanIntervalMs === undefined ? {} : { scanIntervalMs: watchdogScanIntervalMs }),
+  });
+  app.addHook("onReady", async () => watchdog.start());
+  app.addHook("onClose", async () => watchdog.stop());
 
   return app;
 }
