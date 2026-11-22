@@ -19,6 +19,18 @@ export const taskStates = ["READY", "RUNNING", "WAITING_USER"] as const;
 export const stepKinds = ["model", "tool"] as const;
 export const stepStatuses = ["ok", "error"] as const;
 export const messageRoles = ["customer", "agent"] as const;
+export const confirmationStatuses = ["REQUESTED", "CONFIRMED", "INVALIDATED"] as const;
+export const writeIntentStates = [
+  "PREPARED",
+  "SENT",
+  "CONFIRMED",
+  "UNKNOWN",
+  "VERIFIED_DONE",
+  "VERIFIED_ABSENT",
+  "REJECTED",
+  "HANDOFF",
+  "CANCELLED",
+] as const;
 
 export const tasks = pgTable(
   "tasks",
@@ -78,7 +90,55 @@ export const userVisibleMessages = pgTable(
     seq: integer().notNull(),
     role: text({ enum: messageRoles }).notNull(),
     content: text().notNull(),
+    // Structured part a client acts on, e.g. a question's options or the parameters to confirm.
+    payload: jsonb(),
     createdAt: timestamptz().notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.taskId, t.turn, t.seq] })],
+);
+
+// What the agent asked the customer to confirm. Only the latest request of a task can be valid:
+// a new one invalidates the earlier ones.
+export const confirmations = pgTable(
+  "confirmations",
+  {
+    taskId: uuid()
+      .notNull()
+      .references(() => tasks.id),
+    // The seq of the step that requested it, also the seq of the message that shows it.
+    seq: integer().notNull(),
+    tool: text().notNull(),
+    // Normalized parameters of the write tool.
+    parameters: jsonb().notNull(),
+    parametersHash: text().notNull(),
+    status: text({ enum: confirmationStatuses }).notNull(),
+    createdAt: timestamptz().notNull().defaultNow(),
+    updatedAt: timestamptz().notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.seq] })],
+);
+
+// One per write operation, keyed by its operation ID.
+export const writeIntents = pgTable(
+  "write_intents",
+  {
+    operationId: text().primaryKey(),
+    taskId: uuid()
+      .notNull()
+      .references(() => tasks.id),
+    tool: text().notNull(),
+    operation: text().notNull(),
+    state: text({ enum: writeIntentStates }).notNull(),
+    // The operation's own normalized parameters, as sent.
+    parameters: jsonb().notNull(),
+    // Business (logical) time, not the database clock: set on entering SENT, carried by the request.
+    deadline: timestamptz(),
+    // What the business service returned when the write took effect.
+    result: jsonb(),
+    // The business rejection, once REJECTED.
+    error: jsonb(),
+    createdAt: timestamptz().notNull().defaultNow(),
+    updatedAt: timestamptz().notNull().defaultNow(),
+  },
+  (t) => [index("write_intents_by_task").on(t.taskId, t.createdAt)],
 );

@@ -141,9 +141,10 @@ test("the next turn appends to the step log, and the model sees earlier turns re
   ]);
   expect(await listUserVisibleMessages(db, taskId)).toMatchObject([
     { turn: 1, seq: 0, role: "customer" },
-    { turn: 1, seq: 1, role: "agent", content: "3 left." },
+    { turn: 1, seq: 3, role: "agent", content: "3 left." },
     { turn: 2, seq: 0, role: "customer" },
-    { turn: 2, seq: 1, role: "agent", content: "Still about 3." },
+    // An agent message takes the seq of the step that produced it.
+    { turn: 2, seq: 4, role: "agent", content: "Still about 3." },
   ]);
 });
 
@@ -200,6 +201,11 @@ test.each([
     (tool: ToolDeclaration) => [{ ...tool, volatility: undefined } as unknown as ToolDeclaration],
     /look_up_stock.*volatility/,
   ],
+  [
+    "a tool named like a kernel built-in",
+    (tool: ToolDeclaration) => [{ ...tool, name: "ask_user" }],
+    /ask_user.*reserved/,
+  ],
 ])("a business package with %s is refused", (_case, tools, message) => {
   const [tool] = stockPackage({}).tools;
   if (tool === undefined) {
@@ -212,12 +218,13 @@ test.each([
   ).toThrow(message);
 });
 
-test("the model is offered the business package's tools with their parameter schemas", async () => {
+test("the model is offered the business package's tools with their parameter schemas, then the kernel's", async () => {
   await taskWithMessage("anything left?");
 
   const { model } = await runTurnWith(stockPackage({}), [{ content: "Which item?" }]);
 
-  expect(model.requests[0]?.tools).toEqual([
+  expect(model.requests[0]?.tools.map((tool) => tool.name)).toEqual(["look_up_stock", "ask_user"]);
+  expect(model.requests[0]?.tools.slice(0, 1)).toEqual([
     {
       name: "look_up_stock",
       description: "Current stock of one item",
