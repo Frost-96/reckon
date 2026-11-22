@@ -1,61 +1,35 @@
-import type { AddressInfo } from "node:net";
-import { type BusinessMockUnderTest, startBusinessMock } from "@reckon/business-mock/test-support";
 import {
-  createExecutor,
-  createScriptedModel,
   createTask,
-  type ExecutionDb,
   listUserVisibleMessages,
-  type ModelRequest,
   postCustomerMessage,
   type ScriptedStep,
 } from "@reckon/kernel";
-import { type ExecutionTestDatabase, startExecutionTestDatabase } from "@reckon/kernel/testing";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import { createAftersalesPackage } from "./index.ts";
+import {
+  type AftersalesUnderTest,
+  lastToolResult,
+  startAftersalesUnderTest,
+} from "./test-support.ts";
 
-let mock: BusinessMockUnderTest;
-let businessServiceUrl: string;
-let database: ExecutionTestDatabase;
-let db: ExecutionDb;
+let env: AftersalesUnderTest;
 
 beforeAll(async () => {
-  mock = await startBusinessMock();
-  await mock.app.listen({ host: "127.0.0.1", port: 0 });
-  businessServiceUrl = `http://127.0.0.1:${(mock.app.server.address() as AddressInfo).port}`;
-  database = await startExecutionTestDatabase();
-  db = database.db;
+  env = await startAftersalesUnderTest();
 });
 
 afterAll(async () => {
-  await database.close();
-  await mock.close();
+  await env.close();
 });
 
 beforeEach(async () => {
-  await mock.reset();
+  await env.mock.reset();
 });
 
 async function askAgent(customerId: string, message: string, script: ScriptedStep[]) {
-  const task = await createTask(db, { customerId });
-  await postCustomerMessage(db, task.id, message);
-  const model = createScriptedModel(script);
-  const executor = createExecutor({
-    db,
-    owner: "executor-1",
-    businessPackage: createAftersalesPackage({ businessServiceUrl }),
-    model,
-  });
-  await executor.runOnce();
-  return { model, messages: await listUserVisibleMessages(db, task.id) };
-}
-
-function lastToolResult(request: ModelRequest | undefined): unknown {
-  const message = request?.messages.at(-1);
-  if (message?.role !== "tool") {
-    throw new Error("The request does not end with a tool result");
-  }
-  return JSON.parse(message.content);
+  const task = await createTask(env.db, { customerId });
+  await postCustomerMessage(env.db, task.id, message);
+  const model = await env.runTurn(script);
+  return { model, messages: await listUserVisibleMessages(env.db, task.id) };
 }
 
 test("the agent looks up the customer's order and replies to the customer", async () => {
