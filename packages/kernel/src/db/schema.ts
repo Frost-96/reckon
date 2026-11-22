@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
+  boolean,
   check,
   index,
   integer,
@@ -8,6 +10,7 @@ import {
   snakeCase,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -16,6 +19,7 @@ const pgTable = snakeCase.table;
 const timestamptz = () => timestamp({ withTimezone: true, mode: "date" });
 
 export const taskStates = ["READY", "RUNNING", "WAITING_USER", "CLOSED"] as const;
+export const leaseEventKinds = ["claimed", "expired", "rebuilt", "resumed"] as const;
 export const stepKinds = ["model", "tool"] as const;
 export const stepStatuses = ["ok", "error"] as const;
 export const messageRoles = ["customer", "agent"] as const;
@@ -56,6 +60,8 @@ export const tasks = pgTable(
     leaseUntil: timestamptz(),
     // Bumped by every claim; checkpoints of an older holder no longer match.
     version: integer().notNull().default(0),
+    // Set when a holder's lease ran out; the next holder recovers before going on.
+    needsRecovery: boolean().notNull().default(false),
     createdAt: timestamptz().notNull().defaultNow(),
     updatedAt: timestamptz().notNull().defaultNow(),
   },
@@ -66,6 +72,25 @@ export const tasks = pgTable(
     ),
     index("tasks_ready_queue").on(t.updatedAt, t.id).where(sql`${t.state} = 'READY'`),
   ],
+);
+
+// What happened to each lease, stamped by the database clock (ADR 0002) so recovery times can
+// be computed in SQL. At most one event of a kind per lease version.
+export const leaseEvents = pgTable(
+  "lease_events",
+  {
+    // Order of recording.
+    id: bigint({ mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    taskId: uuid()
+      .notNull()
+      .references(() => tasks.id),
+    // The lease the event is about: the one that ran out for expired, the new one otherwise.
+    version: integer().notNull(),
+    kind: text({ enum: leaseEventKinds }).notNull(),
+    owner: text().notNull(),
+    at: timestamptz().notNull().defaultNow(),
+  },
+  (t) => [unique("lease_events_once_per_lease").on(t.taskId, t.version, t.kind)],
 );
 
 // Append-only (enforced by a trigger in the migrations).

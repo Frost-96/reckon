@@ -1,88 +1,31 @@
 import { createHash } from "node:crypto";
-import type { AddressInfo } from "node:net";
-import { type BusinessMockUnderTest, startBusinessMock } from "@reckon/business-mock/test-support";
-import {
-  createExecutor,
-  createScriptedModel,
-  createTask,
-  type ExecutionDb,
-  listUserVisibleMessages,
-  listWriteIntents,
-  type ModelRequest,
-  postCustomerMessage,
-  type ScriptedStep,
-} from "@reckon/kernel";
-import { type ExecutionTestDatabase, startExecutionTestDatabase } from "@reckon/kernel/testing";
+import { defaultFixture } from "@reckon/business-mock/test-support";
+import { listWriteIntents } from "@reckon/kernel";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import { createAftersalesPackage } from "./index.ts";
+import {
+  type AftersalesUnderTest,
+  confirmLatestRequest,
+  lastToolResult,
+  startAftersalesUnderTest,
+} from "./test-support.ts";
 
-let mock: BusinessMockUnderTest;
-let businessServiceUrl: string;
-let database: ExecutionTestDatabase;
-let db: ExecutionDb;
+let env: AftersalesUnderTest;
 
 beforeAll(async () => {
-  mock = await startBusinessMock();
-  await mock.app.listen({ host: "127.0.0.1", port: 0 });
-  businessServiceUrl = `http://127.0.0.1:${(mock.app.server.address() as AddressInfo).port}`;
-  database = await startExecutionTestDatabase();
-  db = database.db;
+  env = await startAftersalesUnderTest();
 });
 
 afterAll(async () => {
-  await database.close();
-  await mock.close();
+  await env.close();
 });
 
 beforeEach(async () => {
-  await mock.reset();
+  await env.mock.reset();
 });
 
-async function runTurn(script: ScriptedStep[]) {
-  const model = createScriptedModel(script);
-  const executor = createExecutor({
-    db,
-    owner: "executor-1",
-    businessPackage: createAftersalesPackage({ businessServiceUrl }),
-    model,
-  });
-  await executor.runOnce();
-  return model;
-}
-
-// Turn 1 asks the customer to confirm the return; the customer confirms, starting turn 2.
-async function confirmedReturn(customerId: string, parameters: unknown): Promise<string> {
-  const task = await createTask(db, { customerId });
-  await postCustomerMessage(db, task.id, "我要退一个水壶");
-  await runTurn([
-    {
-      toolCalls: [
-        {
-          name: "request_confirmation",
-          arguments: { tool: "submit_return", parameters, message: "请确认退货信息" },
-        },
-      ],
-    },
-  ]);
-  const request = (await listUserVisibleMessages(db, task.id)).at(-1);
-  if (request?.payload?.kind !== "confirmation_request") {
-    throw new Error("The agent did not ask for confirmation");
-  }
-  await postCustomerMessage(db, task.id, "确认", { confirms: request.seq });
-  return task.id;
-}
-
 async function aftersalesOf(customerId: string): Promise<unknown[]> {
-  const response = await mock.app.inject({ url: `/customers/${customerId}/aftersales` });
+  const response = await env.mock.app.inject({ url: `/customers/${customerId}/aftersales` });
   return response.json();
-}
-
-function lastToolResult(request: ModelRequest | undefined): unknown {
-  const message = request?.messages.at(-1);
-  if (message?.role !== "tool") {
-    throw new Error("The request does not end with a tool result");
-  }
-  return JSON.parse(message.content);
 }
 
 function sha256(text: string): string {
@@ -98,9 +41,9 @@ const kettleReturn = {
 };
 
 test("one confirmed submit_return creates exactly one aftersales order and its return shipment", async () => {
-  const taskId = await confirmedReturn("C1", kettleReturn);
+  const taskId = await env.confirmedReturn("C1", kettleReturn);
 
-  const model = await runTurn([
+  const model = await env.runTurn([
     { toolCalls: [{ name: "submit_return", arguments: kettleReturn }] },
     { content: "退货已提交。" },
   ]);
@@ -122,7 +65,7 @@ test("one confirmed submit_return creates exactly one aftersales order and its r
     clientRef: createAftersales,
     returnShipment: { clientRef: createReturnShipment },
   });
-  expect(await listWriteIntents(db, taskId)).toMatchObject([
+  expect(await listWriteIntents(env.db, taskId)).toMatchObject([
     { operation: "create_aftersales", operationId: createAftersales, state: "CONFIRMED" },
     { operation: "create_return_shipment", operationId: createReturnShipment, state: "CONFIRMED" },
   ]);
@@ -134,9 +77,9 @@ test("one confirmed submit_return creates exactly one aftersales order and its r
 
 test("a business rejection reaches the agent as a structured error and nothing is written", async () => {
   const tooMany = { ...kettleReturn, quantity: 3 };
-  const taskId = await confirmedReturn("C1", tooMany);
+  const taskId = await env.confirmedReturn("C1", tooMany);
 
-  const model = await runTurn([
+  const model = await env.runTurn([
     { toolCalls: [{ name: "submit_return", arguments: tooMany }] },
     { content: "这件商品最多只能退 2 个。" },
   ]);
@@ -145,7 +88,69 @@ test("a business rejection reaches the agent as a structured error and nothing i
     error: { code: "QUANTITY_EXCEEDS_RETURNABLE", operation: "create_aftersales" },
   });
   expect(await aftersalesOf("C1")).toEqual([]);
-  expect(await listWriteIntents(db, taskId)).toMatchObject([
+  expect(await listWriteIntents(env.db, taskId)).toMatchObject([
     { operation: "create_aftersales", state: "REJECTED" },
   ]);
+});
+
+// Between the customer's confirmation and the write, the business service raises the fee.
+async function raiseReturnFee(returnFeeCents: number): Promise<void> {
+  await env.mock.reset("seed-1", {
+    ...defaultFixture(),
+    policy: { returnWindowDays: 7, returnFeeCents },
+  });
+}
+
+test("after a fee change the return at the confirmed fee is refused and nothing is written", async () => {
+  const taskId = await env.confirmedReturn("C1", kettleReturn);
+  await raiseReturnFee(1000);
+
+  const model = await env.runTurn([
+    { toolCalls: [{ name: "submit_return", arguments: kettleReturn }] },
+    { content: "退货运费有变化，未能提交。" },
+  ]);
+
+  expect(lastToolResult(model.requests[1])).toMatchObject({
+    error: { code: "FEE_CHANGED", operation: "create_aftersales" },
+  });
+  expect(await aftersalesOf("C1")).toEqual([]);
+  expect(await listWriteIntents(env.db, taskId)).toMatchObject([
+    { operation: "create_aftersales", state: "REJECTED" },
+  ]);
+});
+
+test("after a fee change the original confirmation does not cover the new fee; the customer confirms it again", async () => {
+  const taskId = await env.confirmedReturn("C1", kettleReturn);
+  await raiseReturnFee(1000);
+  const atNewFee = { ...kettleReturn, returnFeeCents: 1000 };
+
+  const rechecking = await env.runTurn([
+    { toolCalls: [{ name: "query_aftersales_rules", arguments: { orderId: "O1" } }] },
+    { toolCalls: [{ name: "submit_return", arguments: atNewFee }] },
+    {
+      toolCalls: [
+        {
+          name: "request_confirmation",
+          arguments: {
+            tool: "submit_return",
+            parameters: atNewFee,
+            message: "退货运费已调整为 10 元，请重新确认",
+          },
+        },
+      ],
+    },
+  ]);
+  expect(lastToolResult(rechecking.requests[1])).toMatchObject({ returnFeeCents: 1000 });
+  expect(lastToolResult(rechecking.requests[2])).toMatchObject({
+    error: { code: "CONFIRMATION_REQUIRED" },
+  });
+  expect(await listWriteIntents(env.db, taskId)).toEqual([]);
+
+  await confirmLatestRequest(env.db, taskId);
+  await env.runTurn([
+    { toolCalls: [{ name: "submit_return", arguments: atNewFee }] },
+    { content: "退货已提交。" },
+  ]);
+
+  expect(await aftersalesOf("C1")).toMatchObject([{ lineId: "L1", returnFeeCents: 1000 }]);
 });
