@@ -1,0 +1,115 @@
+{
+  "name": "test-eligibility-closed-application-1",
+  "description": "符合条件：这行商品有一张已关闭的售后单，关闭的申请不占可退数量。",
+  "seed": "test-eligibility-closed-application-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-11241",
+        "customerId": "C-7037",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [{ "id": "L1", "productName": "运动手环", "quantity": 2 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-11241",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 1000,
+        "quantity": 2,
+        "status": "closed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-7037",
+    "messages": ["我想退订单 O-11241 里的 2 件运动手环，原因是尺寸不合适。"],
+    "answers": {
+      "orderId": "O-11241",
+      "lineId": { "choose": "运动手环" },
+      "quantity": "2 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-11241",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-11241" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-11241" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-11241",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "尺寸不合适",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-11241 的运动手环 2 件，原因“尺寸不合适”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-11241",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "尺寸不合适",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-11241", "lineId": "L1", "count": 2 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-11241",
+        "lineId": "L1",
+        "includeSeeded": false,
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

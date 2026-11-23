@@ -1,0 +1,107 @@
+{
+  "name": "dev-complete-info-asks-progress-1",
+  "description": "信息完整：提交退货后，顾客在同一个任务里继续问进度。",
+  "seed": "dev-complete-info-asks-progress-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-49878",
+        "customerId": "C-5294",
+        "status": "delivered",
+        "deliveredDaysAgo": 23,
+        "lines": [{ "id": "L1", "productName": "羽绒枕", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5294",
+    "messages": ["我想退订单 O-49878 里的 1 件羽绒枕，原因是质量有问题。", "退货办得怎么样了？"],
+    "answers": {
+      "orderId": "O-49878",
+      "lineId": { "choose": "羽绒枕" },
+      "quantity": "1 件",
+      "reason": "质量有问题"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-49878",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "质量有问题",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-49878" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-49878" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-49878",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "质量有问题",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-49878 的羽绒枕 1 件，原因“质量有问题”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-49878",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "质量有问题",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 15.00 元。" }
+      ],
+      [
+        { "toolCalls": [{ "name": "query_aftersales", "arguments": { "orderId": "O-49878" } }] },
+        { "content": "您的售后单正在处理中，寄回单已生成，请按寄回单把商品寄回。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-49878",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1500,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

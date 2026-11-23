@@ -1,0 +1,275 @@
+{
+  "type": "diff",
+  "version": "10",
+  "dialect": "postgres",
+  "id": "fe312f4d-bd44-47d9-be7a-6dd40120b60d",
+  "prevIds": ["9d68febd-4d5f-4f81-8253-50d3d8539113"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "executor_starts"],
+      "writes": [
+        "s|tbl|public.executor_starts",
+        "n|tbl|public.executor_starts",
+        "e|tbl|public.executor_starts",
+        "n|rel|public.executor_starts",
+        "n|type|public.executor_starts",
+        "n|rel|public.executor_starts_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "fault_firings"],
+      "writes": [
+        "s|tbl|public.fault_firings",
+        "n|tbl|public.fault_firings",
+        "e|tbl|public.fault_firings",
+        "n|rel|public.fault_firings",
+        "n|type|public.fault_firings",
+        "n|rel|public.fault_firings_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "fault_firings"],
+      "writes": [
+        "s|fk|public.fault_firings.fault_firings_run_id_runs_id_fkey",
+        "n|fk|public.fault_firings.fault_firings_run_id_runs_id_fkey",
+        "e|fk|public.fault_firings.fault_firings_run_id_runs_id_fkey",
+        "n|con|public.fault_firings.fault_firings_run_id_runs_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.fault_firings",
+        "n|sch|public",
+        "n|tbl|public.runs",
+        "n|sch|public",
+        "n|col|public.fault_firings.run_id",
+        "n|col|public.runs.id",
+        "e|uniqueness|public.runs.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "fault_firings"],
+      "writes": [
+        "s|fk|public.fault_firings.fault_firings_task_id_tasks_id_fkey",
+        "n|fk|public.fault_firings.fault_firings_task_id_tasks_id_fkey",
+        "e|fk|public.fault_firings.fault_firings_task_id_tasks_id_fkey",
+        "n|con|public.fault_firings.fault_firings_task_id_tasks_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.fault_firings",
+        "n|sch|public",
+        "n|tbl|public.tasks",
+        "n|sch|public",
+        "n|col|public.fault_firings.task_id",
+        "n|col|public.tasks.id",
+        "e|uniqueness|public.tasks.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "executor_starts",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "fault_firings",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executor_starts",
+        "name": "owner",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executor_starts",
+        "name": "host",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executor_starts",
+        "name": "started_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "run_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "fault_point",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "task_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "owner",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "fired_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "fault_firings_run_id_runs_id_fkey",
+        "nameExplicit": false,
+        "columns": ["run_id"],
+        "schemaTo": "public",
+        "tableTo": "runs",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "fault_firings_task_id_tasks_id_fkey",
+        "nameExplicit": false,
+        "columns": ["task_id"],
+        "schemaTo": "public",
+        "tableTo": "tasks",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "NO ACTION",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "fault_firings",
+        "name": "fault_firings_pkey",
+        "columns": ["run_id", "fault_point"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "executor_starts",
+        "name": "executor_starts_pkey",
+        "columns": ["owner"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

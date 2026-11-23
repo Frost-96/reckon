@@ -1,0 +1,103 @@
+{
+  "name": "test-complete-info-one-line-2",
+  "description": "信息完整：订单只有一个商品行，顾客一次说清订单、商品、数量和原因。",
+  "seed": "test-complete-info-one-line-2",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-59694",
+        "customerId": "C-8505",
+        "status": "delivered",
+        "deliveredDaysAgo": 9,
+        "lines": [{ "id": "L1", "productName": "羽绒枕", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-8505",
+    "messages": ["我想退订单 O-59694 里的 1 件羽绒枕，原因是质量有问题。"],
+    "answers": {
+      "orderId": "O-59694",
+      "lineId": { "choose": "羽绒枕" },
+      "quantity": "1 件",
+      "reason": "质量有问题"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-59694",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "质量有问题",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-59694" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-59694" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-59694",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "质量有问题",
+                  "returnFeeCents": 0
+                },
+                "message": "请确认：退订单 O-59694 的羽绒枕 1 件，原因“质量有问题”，退货运费 0.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-59694",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "质量有问题",
+                "returnFeeCents": 0
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 0.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-59694",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 0,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

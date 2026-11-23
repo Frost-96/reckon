@@ -1,0 +1,119 @@
+{
+  "name": "dev-follow-up-quantity-1",
+  "description": "需要追问：商品买了多件，顾客没说退几件。",
+  "seed": "dev-follow-up-quantity-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-90277",
+        "customerId": "C-8090",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [
+          { "id": "L1", "productName": "马克杯", "quantity": 2 },
+          { "id": "L2", "productName": "毛巾套装", "quantity": 3 },
+          { "id": "L3", "productName": "羽绒枕", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-8090",
+    "messages": ["我想退订单 O-90277 里的马克杯，原因是尺寸不合适。"],
+    "answers": {
+      "orderId": "O-90277",
+      "lineId": { "choose": "马克杯" },
+      "quantity": "2 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-90277",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-90277" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问要退几件马克杯？最多可退 2 件。", "slot": "quantity" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-90277" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-90277",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "尺寸不合适",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-90277 的马克杯 2 件，原因“尺寸不合适”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-90277",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "尺寸不合适",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-90277",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-90277", "lineId": "L2", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-90277", "lineId": "L3", "count": 0 }
+    ]
+  }
+}

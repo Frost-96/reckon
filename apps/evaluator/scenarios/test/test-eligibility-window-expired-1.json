@@ -1,0 +1,58 @@
+{
+  "name": "test-eligibility-window-expired-1",
+  "description": "不符合条件：订单已超过售后期限，Agent 查规则后说明原因。",
+  "seed": "test-eligibility-window-expired-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-61405",
+        "customerId": "C-2142",
+        "status": "delivered",
+        "deliveredDaysAgo": 14,
+        "lines": [{ "id": "L1", "productName": "羽绒枕", "quantity": 3 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-2142",
+    "messages": ["我想退订单 O-61405 里的 3 件羽绒枕，原因是不想要了。"],
+    "answers": {
+      "orderId": "O-61405",
+      "lineId": { "choose": "羽绒枕" },
+      "quantity": "3 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-61405",
+          "lineId": "L1",
+          "quantity": 3,
+          "reason": "不想要了",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-61405" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-61405" } }]
+        },
+        { "content": "抱歉，这笔订单已超过签收后 7 天的售后期限，无法再办理退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-61405", "lineId": "L1", "count": 0 }]
+  }
+}

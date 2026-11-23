@@ -7,6 +7,8 @@ import { migrateBusinessDatabase } from "./db/database.ts";
 
 export interface BusinessMockUnderTest {
   app: FastifyInstance;
+  // The mock's own database, as the `business` role.
+  databaseUrl: string;
   reset(seed?: string, fixture?: unknown): Promise<void>;
   configure(config: Record<string, unknown>): Promise<void>;
   close(): Promise<void>;
@@ -22,6 +24,7 @@ export async function startBusinessMock(
   const app = buildApp({ ...options, pool, adminEnabled: true });
   return {
     app,
+    databaseUrl: database.url,
     async reset(seed = "seed-1", fixture = defaultFixture()) {
       expectStatus(
         await app.inject({ method: "POST", url: "/admin/reset", payload: { seed, fixture } }),

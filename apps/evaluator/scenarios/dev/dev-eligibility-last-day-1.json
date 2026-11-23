@@ -1,0 +1,103 @@
+{
+  "name": "dev-eligibility-last-day-1",
+  "description": "符合条件：签收至今离售后期限只剩半天。",
+  "seed": "dev-eligibility-last-day-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-87044",
+        "customerId": "C-9128",
+        "status": "delivered",
+        "deliveredDaysAgo": 14.5,
+        "lines": [{ "id": "L1", "productName": "台灯", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-9128",
+    "messages": ["我想退订单 O-87044 里的 1 件台灯，原因是功能不符合预期。"],
+    "answers": {
+      "orderId": "O-87044",
+      "lineId": { "choose": "台灯" },
+      "quantity": "1 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-87044",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-87044" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-87044" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-87044",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-87044 的台灯 1 件，原因“功能不符合预期”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-87044",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-87044",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

@@ -21,6 +21,7 @@
     "packages/*/src",
     "apps/*/src",
     "apps/*/drizzle.config.ts",
+    "packages/*/drizzle.config.ts",
     "scripts",
     "vitest.config.ts"
   ]

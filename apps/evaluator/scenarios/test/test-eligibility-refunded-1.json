@@ -1,0 +1,55 @@
+{
+  "name": "test-eligibility-refunded-1",
+  "description": "不符合条件：订单已经退款，Agent 查订单后说明原因。",
+  "seed": "test-eligibility-refunded-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-29654",
+        "customerId": "C-3347",
+        "status": "refunded",
+        "deliveredDaysAgo": 26,
+        "lines": [{ "id": "L1", "productName": "毛巾套装", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-3347",
+    "messages": ["我想退订单 O-29654 里的 1 件毛巾套装，原因是颜色和图片不一样。"],
+    "answers": {
+      "orderId": "O-29654",
+      "lineId": { "choose": "毛巾套装" },
+      "quantity": "1 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-29654",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-29654" } }]
+        },
+        { "content": "订单 O-29654 已经退款，无法再办理退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-29654", "lineId": "L1", "count": 0 }]
+  }
+}

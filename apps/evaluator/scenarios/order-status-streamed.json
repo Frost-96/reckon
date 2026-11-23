@@ -1,0 +1,41 @@
+{
+  "name": "order-status-streamed",
+  "description": "顾客问订单状态，Agent 查询订单后用一段较长的回复作答，不写入。用于观察流式草稿：配合 --fault mid_model_stream --watch-stream，回复流到一半时执行进程崩溃。",
+  "seed": "order-status-streamed",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O1",
+        "customerId": "C1",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [
+          { "id": "L1", "productName": "电水壶", "quantity": 2 },
+          { "id": "L2", "productName": "马克杯", "quantity": 1 }
+        ]
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C1",
+    "messages": ["我的订单 O1 现在是什么状态？"]
+  },
+  "model": {
+    "turns": [
+      [
+        { "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O1" } }] },
+        {
+          "content": "您的订单 O1 已于两天前签收，包含电水壶 2 件和马克杯 1 件；如需退货，签收后 7 天内都可以申请。"
+        }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O1", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O1", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

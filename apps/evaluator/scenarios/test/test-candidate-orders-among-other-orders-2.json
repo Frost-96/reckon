@@ -1,0 +1,141 @@
+{
+  "name": "test-candidate-orders-among-other-orders-2",
+  "description": "多个候选订单：顾客有两笔订单买过这件商品，另有不含它的订单，Agent 只列出候选订单。",
+  "seed": "test-candidate-orders-among-other-orders-2",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-98409",
+        "customerId": "C-3818",
+        "status": "delivered",
+        "deliveredDaysAgo": 21,
+        "lines": [{ "id": "L1", "productName": "折叠伞", "quantity": 2 }]
+      },
+      {
+        "id": "O-46009",
+        "customerId": "C-3818",
+        "status": "delivered",
+        "deliveredDaysAgo": 27,
+        "lines": [{ "id": "L1", "productName": "折叠伞", "quantity": 1 }]
+      },
+      {
+        "id": "O-12844",
+        "customerId": "C-3818",
+        "status": "delivered",
+        "deliveredDaysAgo": 27,
+        "lines": [{ "id": "L1", "productName": "电动牙刷", "quantity": 3 }]
+      },
+      {
+        "id": "O-37641",
+        "customerId": "C-3818",
+        "status": "delivered",
+        "deliveredDaysAgo": 9,
+        "lines": [{ "id": "L1", "productName": "帆布包", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-3818",
+    "messages": ["我想退 2 件折叠伞，原因是尺寸不合适。我买过不止一次，记不清是哪笔订单了。"],
+    "answers": {
+      "orderId": { "choose": "O-98409" },
+      "lineId": { "choose": "折叠伞" },
+      "quantity": "2 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-98409",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 2 笔订单买过折叠伞，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": ["O-98409（折叠伞 2 件）", "O-46009（折叠伞 1 件）"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-98409" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-98409",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "尺寸不合适",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-98409 的折叠伞 2 件，原因“尺寸不合适”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-98409",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "尺寸不合适",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-98409",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-46009", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-12844", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-37641", "lineId": "L1", "count": 0 }
+    ]
+  }
+}

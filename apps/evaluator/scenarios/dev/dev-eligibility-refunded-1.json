@@ -1,0 +1,55 @@
+{
+  "name": "dev-eligibility-refunded-1",
+  "description": "不符合条件：订单已经退款，Agent 查订单后说明原因。",
+  "seed": "dev-eligibility-refunded-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-65051",
+        "customerId": "C-5410",
+        "status": "refunded",
+        "deliveredDaysAgo": 11,
+        "lines": [{ "id": "L1", "productName": "马克杯", "quantity": 3 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5410",
+    "messages": ["我想退订单 O-65051 里的 3 件马克杯，原因是颜色和图片不一样。"],
+    "answers": {
+      "orderId": "O-65051",
+      "lineId": { "choose": "马克杯" },
+      "quantity": "3 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-65051",
+          "lineId": "L1",
+          "quantity": 3,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-65051" } }]
+        },
+        { "content": "订单 O-65051 已经退款，无法再办理退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-65051", "lineId": "L1", "count": 0 }]
+  }
+}

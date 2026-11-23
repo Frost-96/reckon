@@ -1,0 +1,145 @@
+{
+  "name": "test-candidate-orders-three-orders-2",
+  "description": "多个候选订单：顾客在三笔订单里都买过这件商品。",
+  "seed": "test-candidate-orders-three-orders-2",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-93965",
+        "customerId": "C-5814",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "收纳箱", "quantity": 1 },
+          { "id": "L2", "productName": "台灯", "quantity": 3 }
+        ]
+      },
+      {
+        "id": "O-44293",
+        "customerId": "C-5814",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "收纳箱", "quantity": 2 },
+          { "id": "L2", "productName": "折叠伞", "quantity": 1 }
+        ]
+      },
+      {
+        "id": "O-90125",
+        "customerId": "C-5814",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [{ "id": "L1", "productName": "收纳箱", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5814",
+    "messages": ["我想退 2 件收纳箱，原因是不想要了。我买过不止一次，记不清是哪笔订单了。"],
+    "answers": {
+      "orderId": { "choose": "O-90125" },
+      "lineId": { "choose": "收纳箱" },
+      "quantity": "2 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-90125",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "不想要了",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 3 笔订单买过收纳箱，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": [
+                  "O-93965（收纳箱 1 件）",
+                  "O-44293（收纳箱 2 件）",
+                  "O-90125（收纳箱 2 件）"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-90125" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-90125",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "不想要了",
+                  "returnFeeCents": 0
+                },
+                "message": "请确认：退订单 O-90125 的收纳箱 2 件，原因“不想要了”，退货运费 0.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-90125",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "不想要了",
+                "returnFeeCents": 0
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 0.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-93965", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-93965", "lineId": "L2", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-44293", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-44293", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-90125",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 0,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

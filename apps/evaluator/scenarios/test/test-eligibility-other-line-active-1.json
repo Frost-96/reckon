@@ -1,0 +1,117 @@
+{
+  "name": "test-eligibility-other-line-active-1",
+  "description": "符合条件：同一订单的另一行商品有他人提交的进行中申请，不影响这一行。",
+  "seed": "test-eligibility-other-line-active-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-47170",
+        "customerId": "C-5395",
+        "status": "delivered",
+        "deliveredDaysAgo": 1,
+        "lines": [
+          { "id": "L1", "productName": "台灯", "quantity": 3 },
+          { "id": "L2", "productName": "电水壶", "quantity": 3 }
+        ]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-47170",
+        "lineId": "L2",
+        "reason": "此前的申请",
+        "returnFeeCents": 0,
+        "quantity": 1,
+        "status": "in_progress"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-5395",
+    "messages": ["我想退订单 O-47170 里的 2 件台灯，原因是功能不符合预期。"],
+    "answers": {
+      "orderId": "O-47170",
+      "lineId": { "choose": "台灯" },
+      "quantity": "2 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-47170",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-47170" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-47170" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-47170",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 0
+                },
+                "message": "请确认：退订单 O-47170 的台灯 2 件，原因“功能不符合预期”，退货运费 0.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-47170",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 0
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 0.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-47170",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 0,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-47170", "lineId": "L2", "count": 1 }
+    ]
+  }
+}

@@ -184,6 +184,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@reckon/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
       '@reckon/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -193,6 +196,9 @@ importers:
       pg:
         specifier: 8.23.1
         version: 8.23.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
   apps/business-mock:
     dependencies:
@@ -216,10 +222,45 @@ importers:
         specifier: 1.0.0-rc.6
         version: 1.0.0-rc.6(drizzle-orm@1.0.0-rc.6(@types/pg@8.23.1)(pg@8.23.1)(zod@4.6.7))
 
-  apps/evaluator: {}
+  apps/evaluator:
+    dependencies:
+      '@reckon/aftersales':
+        specifier: workspace:*
+        version: link:../../packages/aftersales
+      '@reckon/business-mock':
+        specifier: workspace:*
+        version: link:../business-mock
+      '@reckon/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@reckon/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      drizzle-orm:
+        specifier: 1.0.0-rc.6
+        version: 1.0.0-rc.6(@types/pg@8.23.1)(pg@8.23.1)(zod@4.6.7)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@reckon/api':
+        specifier: workspace:*
+        version: link:../api
+      fastify:
+        specifier: 5.12.8
+        version: 5.12.8
 
   apps/executor:
     dependencies:
+      '@reckon/aftersales':
+        specifier: workspace:*
+        version: link:../../packages/aftersales
+      '@reckon/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
       '@reckon/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -229,9 +270,37 @@ importers:
 
   apps/web: {}
 
-  packages/aftersales: {}
+  packages/aftersales:
+    dependencies:
+      '@reckon/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@reckon/business-mock':
+        specifier: workspace:*
+        version: link:../../apps/business-mock
 
-  packages/kernel: {}
+  packages/kernel:
+    dependencies:
+      '@reckon/shared':
+        specifier: workspace:*
+        version: link:../shared
+      drizzle-orm:
+        specifier: 1.0.0-rc.6
+        version: 1.0.0-rc.6(@types/pg@8.23.1)(pg@8.23.1)(zod@4.6.7)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      drizzle-kit:
+        specifier: 1.0.0-rc.6
+        version: 1.0.0-rc.6(drizzle-orm@1.0.0-rc.6(@types/pg@8.23.1)(pg@8.23.1)(zod@4.6.7))
 
   packages/shared:
     dependencies:

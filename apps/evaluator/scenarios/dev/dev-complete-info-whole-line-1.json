@@ -1,0 +1,107 @@
+{
+  "name": "dev-complete-info-whole-line-1",
+  "description": "信息完整：顾客把一个商品行的全部数量都退掉。",
+  "seed": "dev-complete-info-whole-line-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-32450",
+        "customerId": "C-4573",
+        "status": "delivered",
+        "deliveredDaysAgo": 27,
+        "lines": [
+          { "id": "L1", "productName": "电水壶", "quantity": 3 },
+          { "id": "L2", "productName": "保温杯", "quantity": 3 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-4573",
+    "messages": ["我想退订单 O-32450 里的 3 件电水壶，原因是颜色和图片不一样。"],
+    "answers": {
+      "orderId": "O-32450",
+      "lineId": { "choose": "电水壶" },
+      "quantity": "3 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-32450",
+          "lineId": "L1",
+          "quantity": 3,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-32450" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-32450" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-32450",
+                  "lineId": "L1",
+                  "quantity": 3,
+                  "reason": "颜色和图片不一样",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-32450 的电水壶 3 件，原因“颜色和图片不一样”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-32450",
+                "lineId": "L1",
+                "quantity": 3,
+                "reason": "颜色和图片不一样",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 15.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-32450",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 3,
+        "returnFeeCents": 1500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-32450", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

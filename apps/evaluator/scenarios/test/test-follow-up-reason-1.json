@@ -1,0 +1,119 @@
+{
+  "name": "test-follow-up-reason-1",
+  "description": "需要追问：顾客没说退货原因。",
+  "seed": "test-follow-up-reason-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-58438",
+        "customerId": "C-5811",
+        "status": "delivered",
+        "deliveredDaysAgo": 3,
+        "lines": [
+          { "id": "L1", "productName": "毛巾套装", "quantity": 2 },
+          { "id": "L2", "productName": "台灯", "quantity": 3 },
+          { "id": "L3", "productName": "帆布包", "quantity": 3 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5811",
+    "messages": ["我想退订单 O-58438 里的3 件帆布包。"],
+    "answers": {
+      "orderId": "O-58438",
+      "lineId": { "choose": "帆布包" },
+      "quantity": "3 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-58438",
+          "lineId": "L3",
+          "quantity": 3,
+          "reason": "不想要了",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-58438" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-58438" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-58438",
+                  "lineId": "L3",
+                  "quantity": 3,
+                  "reason": "不想要了",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-58438 的帆布包 3 件，原因“不想要了”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-58438",
+                "lineId": "L3",
+                "quantity": 3,
+                "reason": "不想要了",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-58438", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-58438", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-58438",
+        "lineId": "L3",
+        "count": 1,
+        "quantity": 3,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

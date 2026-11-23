@@ -1,0 +1,65 @@
+{
+  "name": "test-eligibility-fully-returned-1",
+  "description": "不符合条件：这行商品已全部退过（售后单已完成），可退数量为 0，Agent 查订单后说明原因。",
+  "seed": "test-eligibility-fully-returned-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-82385",
+        "customerId": "C-4608",
+        "status": "delivered",
+        "deliveredDaysAgo": 5,
+        "lines": [{ "id": "L1", "productName": "毛巾套装", "quantity": 3 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-82385",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 1000,
+        "quantity": 3,
+        "status": "completed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-4608",
+    "messages": ["我想退订单 O-82385 里的 3 件毛巾套装，原因是尺寸不合适。"],
+    "answers": {
+      "orderId": "O-82385",
+      "lineId": { "choose": "毛巾套装" },
+      "quantity": "3 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-82385",
+          "lineId": "L1",
+          "quantity": 3,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-82385" } }]
+        },
+        { "content": "订单 O-82385 里的毛巾套装已经全部退过货了，没有可退的数量。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-82385", "lineId": "L1", "count": 1 }]
+  }
+}

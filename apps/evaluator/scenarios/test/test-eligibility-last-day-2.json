@@ -1,0 +1,103 @@
+{
+  "name": "test-eligibility-last-day-2",
+  "description": "符合条件：签收至今离售后期限只剩半天。",
+  "seed": "test-eligibility-last-day-2",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-83117",
+        "customerId": "C-7517",
+        "status": "delivered",
+        "deliveredDaysAgo": 14.5,
+        "lines": [{ "id": "L1", "productName": "收纳箱", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-7517",
+    "messages": ["我想退订单 O-83117 里的 2 件收纳箱，原因是颜色和图片不一样。"],
+    "answers": {
+      "orderId": "O-83117",
+      "lineId": { "choose": "收纳箱" },
+      "quantity": "2 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-83117",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-83117" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-83117" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-83117",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "颜色和图片不一样",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-83117 的收纳箱 2 件，原因“颜色和图片不一样”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-83117",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "颜色和图片不一样",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 15.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-83117",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 1500,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "name": "dev-eligibility-partly-returned-1",
+  "description": "符合条件：这行商品此前已退过 1 件（已完成），剩余数量仍可退。",
+  "seed": "dev-eligibility-partly-returned-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-96697",
+        "customerId": "C-3476",
+        "status": "delivered",
+        "deliveredDaysAgo": 5,
+        "lines": [{ "id": "L1", "productName": "折叠伞", "quantity": 3 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-96697",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 800,
+        "quantity": 1,
+        "status": "completed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-3476",
+    "messages": ["我想退订单 O-96697 里的 1 件折叠伞，原因是功能不符合预期。"],
+    "answers": {
+      "orderId": "O-96697",
+      "lineId": { "choose": "折叠伞" },
+      "quantity": "1 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-96697",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-96697" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-96697" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-96697",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-96697 的折叠伞 1 件，原因“功能不符合预期”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-96697",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-96697", "lineId": "L1", "count": 2 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-96697",
+        "lineId": "L1",
+        "includeSeeded": false,
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

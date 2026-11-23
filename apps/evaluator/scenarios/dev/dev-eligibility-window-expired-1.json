@@ -1,0 +1,58 @@
+{
+  "name": "dev-eligibility-window-expired-1",
+  "description": "不符合条件：订单已超过售后期限，Agent 查规则后说明原因。",
+  "seed": "dev-eligibility-window-expired-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-21175",
+        "customerId": "C-7974",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [{ "id": "L1", "productName": "马克杯", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-7974",
+    "messages": ["我想退订单 O-21175 里的 1 件马克杯，原因是质量有问题。"],
+    "answers": {
+      "orderId": "O-21175",
+      "lineId": { "choose": "马克杯" },
+      "quantity": "1 件",
+      "reason": "质量有问题"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-21175",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "质量有问题",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-21175" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-21175" } }]
+        },
+        { "content": "抱歉，这笔订单已超过签收后 7 天的售后期限，无法再办理退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-21175", "lineId": "L1", "count": 0 }]
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "name": "return-one-kettle",
+  "description": "顾客说明了订单和商品，被追问原因后确认，一次提交退货；随后在同一任务里问进度。无故障。",
+  "seed": "return-one-kettle",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O1",
+        "customerId": "C1",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [
+          { "id": "L1", "productName": "电水壶", "quantity": 2 },
+          { "id": "L2", "productName": "马克杯", "quantity": 1 }
+        ]
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C1",
+    "messages": ["我想退订单 O1 里的一个电水壶。", "退货办得怎么样了？"],
+    "answers": { "reason": "不想要了" },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O1",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "不想要了",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O1" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O1",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "不想要了",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O1 的电水壶 1 件，原因“不想要了”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O1",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "不想要了",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。" }
+      ],
+      [
+        { "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O1" } }] },
+        { "content": "您的退货申请正在处理中，电水壶还可再退 1 件。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O1",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O1", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

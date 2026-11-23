@@ -2,6 +2,10 @@
   "name": "@reckon/business-mock",
   "private": true,
   "type": "module",
+  "exports": {
+    "./schema": "./src/db/schema.ts",
+    "./test-support": "./src/test-support.ts"
+  },
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
