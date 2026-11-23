@@ -7,7 +7,8 @@ import type { SimulatedUser } from "./scenario.ts";
 export type ConversationEnd =
   // The user said everything the script has and ended the session.
   | "script_completed"
-  // The agent asked for a slot the script has no answer for; the user ended the session.
+  // The agent asked something the script has no answer for (no answer for the slot, or no
+  // single option to choose); the user ended the session.
   | "question_unanswered"
   // The agent asked to confirm something the user does not agree to; the user ended the session.
   | "confirmation_refused"
@@ -68,7 +69,20 @@ function respond(user: SimulatedUser, message: MessageView, followUps: string[])
   const { payload } = message;
   if (payload?.kind === "question") {
     const answer = user.answers[payload.slot];
-    return answer === undefined ? { end: "question_unanswered" } : { content: answer };
+    if (answer === undefined) {
+      return { end: "question_unanswered" };
+    }
+    if (typeof answer === "string") {
+      return { content: answer };
+    }
+    if (payload.options === undefined) {
+      return { content: answer.choose };
+    }
+    // The user never guesses: no matching option, or more than one, leaves the question open.
+    const [chosen, ...others] = payload.options.filter((option) => option.includes(answer.choose));
+    return chosen === undefined || others.length > 0
+      ? { end: "question_unanswered" }
+      : { content: chosen };
   }
   if (payload?.kind === "confirmation_request") {
     const asked = canonicalJson({ tool: payload.tool, parameters: payload.parameters });

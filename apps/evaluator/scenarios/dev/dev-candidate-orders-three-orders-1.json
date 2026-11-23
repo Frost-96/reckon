@@ -1,0 +1,151 @@
+{
+  "name": "dev-candidate-orders-three-orders-1",
+  "description": "多个候选订单：顾客在三笔订单里都买过这件商品。",
+  "seed": "dev-candidate-orders-three-orders-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-80155",
+        "customerId": "C-8188",
+        "status": "delivered",
+        "deliveredDaysAgo": 5,
+        "lines": [
+          { "id": "L1", "productName": "电动牙刷", "quantity": 3 },
+          { "id": "L2", "productName": "马克杯", "quantity": 2 }
+        ]
+      },
+      {
+        "id": "O-90357",
+        "customerId": "C-8188",
+        "status": "delivered",
+        "deliveredDaysAgo": 1,
+        "lines": [
+          { "id": "L1", "productName": "电动牙刷", "quantity": 1 },
+          { "id": "L2", "productName": "蓝牙耳机", "quantity": 2 }
+        ]
+      },
+      {
+        "id": "O-16485",
+        "customerId": "C-8188",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "电动牙刷", "quantity": 2 },
+          { "id": "L2", "productName": "电水壶", "quantity": 1 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-8188",
+    "messages": [
+      "我想退 1 件电动牙刷，原因是收到时外包装破损。我买过不止一次，记不清是哪笔订单了。"
+    ],
+    "answers": {
+      "orderId": { "choose": "O-16485" },
+      "lineId": { "choose": "电动牙刷" },
+      "quantity": "1 件",
+      "reason": "收到时外包装破损"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-16485",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "收到时外包装破损",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 3 笔订单买过电动牙刷，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": [
+                  "O-80155（电动牙刷 3 件）",
+                  "O-90357（电动牙刷 1 件）",
+                  "O-16485（电动牙刷 2 件）"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-16485" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-16485",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "收到时外包装破损",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-16485 的电动牙刷 1 件，原因“收到时外包装破损”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-16485",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "收到时外包装破损",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 15.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-80155", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-80155", "lineId": "L2", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-90357", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-90357", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-16485",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-16485", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

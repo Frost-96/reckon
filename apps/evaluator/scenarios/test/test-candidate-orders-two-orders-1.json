@@ -1,0 +1,129 @@
+{
+  "name": "test-candidate-orders-two-orders-1",
+  "description": "多个候选订单：顾客在两笔订单里都买过这件商品。",
+  "seed": "test-candidate-orders-two-orders-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-68670",
+        "customerId": "C-7274",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [
+          { "id": "L1", "productName": "毛巾套装", "quantity": 1 },
+          { "id": "L2", "productName": "吹风机", "quantity": 3 }
+        ]
+      },
+      {
+        "id": "O-87280",
+        "customerId": "C-7274",
+        "status": "delivered",
+        "deliveredDaysAgo": 10,
+        "lines": [{ "id": "L1", "productName": "毛巾套装", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-7274",
+    "messages": ["我想退 1 件毛巾套装，原因是买重复了。我买过不止一次，记不清是哪笔订单了。"],
+    "answers": {
+      "orderId": { "choose": "O-87280" },
+      "lineId": { "choose": "毛巾套装" },
+      "quantity": "1 件",
+      "reason": "买重复了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-87280",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "买重复了",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 2 笔订单买过毛巾套装，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": ["O-68670（毛巾套装 1 件）", "O-87280（毛巾套装 1 件）"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-87280" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-87280",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "买重复了",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-87280 的毛巾套装 1 件，原因“买重复了”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-87280",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "买重复了",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-68670", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-68670", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-87280",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

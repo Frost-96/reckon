@@ -96,6 +96,7 @@ export async function runScenario(
   const assertions = await checkBusinessAssertions(
     environment.business.db,
     scenario.expected.business,
+    new Set(scenario.business.aftersales.map((record) => record.id)),
   );
   const faults = await reportFaults(environment.executionDb, run.id, faultPlan);
   const actual = outcomeOf(conversation);

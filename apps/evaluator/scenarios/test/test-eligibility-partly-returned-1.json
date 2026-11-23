@@ -1,0 +1,115 @@
+{
+  "name": "test-eligibility-partly-returned-1",
+  "description": "符合条件：这行商品此前已退过 1 件（已完成），剩余数量仍可退。",
+  "seed": "test-eligibility-partly-returned-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-88849",
+        "customerId": "C-5145",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [{ "id": "L1", "productName": "收纳箱", "quantity": 3 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-88849",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 0,
+        "quantity": 1,
+        "status": "completed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-5145",
+    "messages": ["我想退订单 O-88849 里的 1 件收纳箱，原因是质量有问题。"],
+    "answers": {
+      "orderId": "O-88849",
+      "lineId": { "choose": "收纳箱" },
+      "quantity": "1 件",
+      "reason": "质量有问题"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-88849",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "质量有问题",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-88849" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-88849" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-88849",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "质量有问题",
+                  "returnFeeCents": 0
+                },
+                "message": "请确认：退订单 O-88849 的收纳箱 1 件，原因“质量有问题”，退货运费 0.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-88849",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "质量有问题",
+                "returnFeeCents": 0
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 0.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-88849", "lineId": "L1", "count": 2 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-88849",
+        "lineId": "L1",
+        "includeSeeded": false,
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 0,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

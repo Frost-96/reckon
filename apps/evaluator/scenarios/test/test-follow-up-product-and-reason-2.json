@@ -1,0 +1,131 @@
+{
+  "name": "test-follow-up-product-and-reason-2",
+  "description": "需要追问：顾客既没说退哪件商品也没说原因，Agent 分两轮追问。",
+  "seed": "test-follow-up-product-and-reason-2",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-65301",
+        "customerId": "C-5198",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [
+          { "id": "L1", "productName": "蓝牙耳机", "quantity": 1 },
+          { "id": "L2", "productName": "电动牙刷", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5198",
+    "messages": ["订单 O-65301 里有一件商品我想退。"],
+    "answers": {
+      "orderId": "O-65301",
+      "lineId": { "choose": "蓝牙耳机" },
+      "quantity": "1 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-65301",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "不想要了",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-65301" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "请问要退订单里的哪件商品？",
+                "slot": "lineId",
+                "options": ["蓝牙耳机", "电动牙刷"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-65301" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-65301",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "不想要了",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-65301 的蓝牙耳机 1 件，原因“不想要了”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-65301",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "不想要了",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-65301",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-65301", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ import {
   type ExecutionDb,
   getTask,
   listUserVisibleMessages,
+  modelToolDefinitions,
   postCustomerMessage,
   readStepLog,
   type ScriptedStep,
@@ -235,6 +236,15 @@ test("the model is offered the business package's tools with their parameter sch
       },
     },
   ]);
+});
+
+// What a freeze hashes has to be exactly what the model is sent.
+test("the tool definitions published for a business package are the ones its model requests carry", async () => {
+  await taskWithMessage("anything left?");
+
+  const { model } = await runTurnWith(stockPackage({}), [{ content: "Which item?" }]);
+
+  expect(modelToolDefinitions(stockPackage({}))).toEqual(model.requests[0]?.tools);
 });
 
 test("a started executor serves tasks as customer messages arrive, until stopped", async () => {

@@ -1,0 +1,125 @@
+{
+  "name": "dev-complete-info-several-lines-1",
+  "description": "信息完整：订单有多个商品行，顾客另有订单，店里还有他人的订单；只退其中一行。",
+  "seed": "dev-complete-info-several-lines-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-23513",
+        "customerId": "C-9478",
+        "status": "delivered",
+        "deliveredDaysAgo": 10,
+        "lines": [
+          { "id": "L1", "productName": "运动手环", "quantity": 1 },
+          { "id": "L2", "productName": "电动牙刷", "quantity": 1 },
+          { "id": "L3", "productName": "收纳箱", "quantity": 2 }
+        ]
+      },
+      {
+        "id": "O-16409",
+        "customerId": "C-9478",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [{ "id": "L1", "productName": "毛巾套装", "quantity": 2 }]
+      },
+      {
+        "id": "O-85880",
+        "customerId": "C-1418",
+        "status": "delivered",
+        "deliveredDaysAgo": 12,
+        "lines": [{ "id": "L1", "productName": "折叠伞", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-9478",
+    "messages": ["我想退订单 O-23513 里的 1 件收纳箱，原因是颜色和图片不一样。"],
+    "answers": {
+      "orderId": "O-23513",
+      "lineId": { "choose": "收纳箱" },
+      "quantity": "1 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-23513",
+          "lineId": "L3",
+          "quantity": 1,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-23513" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-23513" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-23513",
+                  "lineId": "L3",
+                  "quantity": 1,
+                  "reason": "颜色和图片不一样",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-23513 的收纳箱 1 件，原因“颜色和图片不一样”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-23513",
+                "lineId": "L3",
+                "quantity": 1,
+                "reason": "颜色和图片不一样",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 15.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-23513", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-23513", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-23513",
+        "lineId": "L3",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-16409", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-85880", "lineId": "L1", "count": 0 }
+    ]
+  }
+}

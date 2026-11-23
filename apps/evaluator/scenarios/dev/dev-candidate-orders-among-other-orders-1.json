@@ -1,0 +1,149 @@
+{
+  "name": "dev-candidate-orders-among-other-orders-1",
+  "description": "多个候选订单：顾客有两笔订单买过这件商品，另有不含它的订单，Agent 只列出候选订单。",
+  "seed": "dev-candidate-orders-among-other-orders-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-37489",
+        "customerId": "C-1205",
+        "status": "delivered",
+        "deliveredDaysAgo": 14,
+        "lines": [
+          { "id": "L1", "productName": "台灯", "quantity": 2 },
+          { "id": "L2", "productName": "蓝牙耳机", "quantity": 3 }
+        ]
+      },
+      {
+        "id": "O-51578",
+        "customerId": "C-1205",
+        "status": "delivered",
+        "deliveredDaysAgo": 17,
+        "lines": [
+          { "id": "L1", "productName": "台灯", "quantity": 3 },
+          { "id": "L2", "productName": "收纳箱", "quantity": 2 }
+        ]
+      },
+      {
+        "id": "O-36686",
+        "customerId": "C-1205",
+        "status": "delivered",
+        "deliveredDaysAgo": 19,
+        "lines": [{ "id": "L1", "productName": "马克杯", "quantity": 2 }]
+      },
+      {
+        "id": "O-32285",
+        "customerId": "C-1205",
+        "status": "delivered",
+        "deliveredDaysAgo": 3,
+        "lines": [{ "id": "L1", "productName": "空气炸锅", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-1205",
+    "messages": ["我想退 2 件台灯，原因是功能不符合预期。我买过不止一次，记不清是哪笔订单了。"],
+    "answers": {
+      "orderId": { "choose": "O-37489" },
+      "lineId": { "choose": "台灯" },
+      "quantity": "2 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-37489",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 2 笔订单买过台灯，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": ["O-37489（台灯 2 件）", "O-51578（台灯 3 件）"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-37489" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-37489",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-37489 的台灯 2 件，原因“功能不符合预期”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-37489",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-37489",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-37489", "lineId": "L2", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-51578", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-51578", "lineId": "L2", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-36686", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-32285", "lineId": "L1", "count": 0 }
+    ]
+  }
+}

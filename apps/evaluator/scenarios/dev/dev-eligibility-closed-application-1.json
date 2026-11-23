@@ -1,0 +1,115 @@
+{
+  "name": "dev-eligibility-closed-application-1",
+  "description": "符合条件：这行商品有一张已关闭的售后单，关闭的申请不占可退数量。",
+  "seed": "dev-eligibility-closed-application-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-33652",
+        "customerId": "C-1840",
+        "status": "delivered",
+        "deliveredDaysAgo": 1,
+        "lines": [{ "id": "L1", "productName": "加湿器", "quantity": 3 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-33652",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 800,
+        "quantity": 3,
+        "status": "closed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-1840",
+    "messages": ["我想退订单 O-33652 里的 2 件加湿器，原因是不想要了。"],
+    "answers": {
+      "orderId": "O-33652",
+      "lineId": { "choose": "加湿器" },
+      "quantity": "2 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-33652",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "不想要了",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-33652" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-33652" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-33652",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "不想要了",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-33652 的加湿器 2 件，原因“不想要了”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-33652",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "不想要了",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-33652", "lineId": "L1", "count": 2 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-33652",
+        "lineId": "L1",
+        "includeSeeded": false,
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

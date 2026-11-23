@@ -1,0 +1,133 @@
+{
+  "name": "dev-follow-up-product-and-reason-1",
+  "description": "需要追问：顾客既没说退哪件商品也没说原因，Agent 分两轮追问。",
+  "seed": "dev-follow-up-product-and-reason-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-88778",
+        "customerId": "C-4979",
+        "status": "delivered",
+        "deliveredDaysAgo": 7,
+        "lines": [
+          { "id": "L1", "productName": "陶瓷碗", "quantity": 3 },
+          { "id": "L2", "productName": "羽绒枕", "quantity": 3 },
+          { "id": "L3", "productName": "加湿器", "quantity": 1 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-4979",
+    "messages": ["订单 O-88778 里有一件商品我想退。"],
+    "answers": {
+      "orderId": "O-88778",
+      "lineId": { "choose": "加湿器" },
+      "quantity": "1 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-88778",
+          "lineId": "L3",
+          "quantity": 1,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-88778" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "请问要退订单里的哪件商品？",
+                "slot": "lineId",
+                "options": ["陶瓷碗", "羽绒枕", "加湿器"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-88778" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-88778",
+                  "lineId": "L3",
+                  "quantity": 1,
+                  "reason": "颜色和图片不一样",
+                  "returnFeeCents": 0
+                },
+                "message": "请确认：退订单 O-88778 的加湿器 1 件，原因“颜色和图片不一样”，退货运费 0.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-88778",
+                "lineId": "L3",
+                "quantity": 1,
+                "reason": "颜色和图片不一样",
+                "returnFeeCents": 0
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 0.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-88778", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-88778", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-88778",
+        "lineId": "L3",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 0,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "name": "test-complete-info-asks-progress-1",
+  "description": "信息完整：提交退货后，顾客在同一个任务里继续问进度。",
+  "seed": "test-complete-info-asks-progress-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-91545",
+        "customerId": "C-2857",
+        "status": "delivered",
+        "deliveredDaysAgo": 3,
+        "lines": [{ "id": "L1", "productName": "电动牙刷", "quantity": 3 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-2857",
+    "messages": ["我想退订单 O-91545 里的 3 件电动牙刷，原因是买重复了。", "退货办得怎么样了？"],
+    "answers": {
+      "orderId": "O-91545",
+      "lineId": { "choose": "电动牙刷" },
+      "quantity": "3 件",
+      "reason": "买重复了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-91545",
+          "lineId": "L1",
+          "quantity": 3,
+          "reason": "买重复了",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-91545" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-91545" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-91545",
+                  "lineId": "L1",
+                  "quantity": 3,
+                  "reason": "买重复了",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-91545 的电动牙刷 3 件，原因“买重复了”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-91545",
+                "lineId": "L1",
+                "quantity": 3,
+                "reason": "买重复了",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ],
+      [
+        { "toolCalls": [{ "name": "query_aftersales", "arguments": { "orderId": "O-91545" } }] },
+        { "content": "您的售后单正在处理中，寄回单已生成，请按寄回单把商品寄回。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-91545",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 3,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}
