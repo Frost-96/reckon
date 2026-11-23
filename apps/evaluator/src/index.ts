@@ -16,6 +16,18 @@ export {
   scenarioSets,
   writeDataset,
 } from "./dataset.ts";
+export {
+  defaultFreezeOptions,
+  describeFreezeChange,
+  type FreezeChange,
+  type FreezeCheck,
+  type FreezeOptions,
+  type FreezeRecord,
+  freezeRecordSchema,
+  freezeTestSet,
+  verifyFreeze,
+  verifyFreezeBeforeRun,
+} from "./freeze.ts";
 export { runScenario, type ScenarioEnvironment, type ScenarioResult } from "./run-scenario.ts";
 export {
   type BusinessAssertion,
@@ -27,4 +39,10 @@ export {
   type Scenario,
   scenarioSchema,
 } from "./scenario.ts";
+export {
+  type ScenarioFile,
+  type ScenarioTemplate,
+  type ScenarioVariant,
+  scenarioTemplates,
+} from "./scenario-templates.ts";
 export type { Conversation, ConversationEnd } from "./simulated-user.ts";

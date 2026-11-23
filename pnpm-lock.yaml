@@ -224,6 +224,9 @@ importers:
 
   apps/evaluator:
     dependencies:
+      '@reckon/aftersales':
+        specifier: workspace:*
+        version: link:../../packages/aftersales
       '@reckon/business-mock':
         specifier: workspace:*
         version: link:../business-mock
@@ -243,9 +246,6 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
     devDependencies:
-      '@reckon/aftersales':
-        specifier: workspace:*
-        version: link:../../packages/aftersales
       '@reckon/api':
         specifier: workspace:*
         version: link:../api
