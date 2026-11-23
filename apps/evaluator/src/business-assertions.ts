@@ -9,12 +9,10 @@ export interface BusinessReader {
   close(): Promise<void>;
 }
 
-// Every transaction on these sessions is read-only: the evaluator never writes business data.
+// `url` names the business reader role, which may only select: the evaluator never writes
+// business data.
 export function connectBusinessReader(url: string): BusinessReader {
-  const pool = new pg.Pool({
-    connectionString: url,
-    options: "-c default_transaction_read_only=on",
-  });
+  const pool = new pg.Pool({ connectionString: url });
   return { db: drizzle({ client: pool }), close: () => pool.end() };
 }
 

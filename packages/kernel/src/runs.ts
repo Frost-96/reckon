@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ExecutionDb, ExecutionQueries } from "./db/database.ts";
 import { runs } from "./db/schema.ts";
 import type { ModelForTask } from "./executor.ts";
+import { plannedFaultSchema } from "./fault-points.ts";
 import { createTurnScriptedModel } from "./scripted-model.ts";
 
 const scriptedToolCall = z
@@ -27,10 +28,14 @@ export const runConfigSchema = z
     model: z
       .object({ kind: z.literal("scripted"), turns: z.array(z.array(scriptedResponse)) })
       .strict(),
+    // Where the executor serving the run drops itself, each point at most once in the run.
+    faultPlan: z.array(plannedFaultSchema).default([]),
   })
   .strict();
 
 export type RunConfig = z.output<typeof runConfigSchema>;
+// What a run is created from; defaults are filled in.
+export type RunConfigInput = z.input<typeof runConfigSchema>;
 
 export interface Run {
   id: string;
@@ -51,7 +56,7 @@ export class RunNotFoundError extends Error {
 
 export async function createRun(
   db: ExecutionDb,
-  input: { scenario: string; config: RunConfig },
+  input: { scenario: string; config: RunConfigInput },
 ): Promise<Run> {
   const config = runConfigSchema.parse(input.config);
   const [run] = await db.insert(runs).values({ scenario: input.scenario, config }).returning();

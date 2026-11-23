@@ -27,7 +27,21 @@ export {
   type ModelForTask,
   type TurnOutcome,
 } from "./executor.ts";
-export type { FaultPoint, FaultPointHook } from "./fault-points.ts";
+export { recordExecutorStart } from "./executor-starts.ts";
+export {
+  type FaultFiring,
+  type FaultPlanOptions,
+  faultPlanOfRun,
+  listFaultFirings,
+} from "./fault-plan.ts";
+export {
+  type FaultPoint,
+  type FaultPointHook,
+  faultPointLabel,
+  faultPointNames,
+  type PlannedFault,
+  parseFaultPointLabel,
+} from "./fault-points.ts";
 export { LeaseLostError } from "./lease.ts";
 export { type LeaseEvent, type LeaseEventKind, listLeaseEvents } from "./lease-events.ts";
 export type {
@@ -46,6 +60,7 @@ export {
   modelOfRun,
   type Run,
   type RunConfig,
+  type RunConfigInput,
   RunNotFoundError,
   runConfigSchema,
 } from "./runs.ts";

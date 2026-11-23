@@ -1,9 +1,16 @@
 name: reckon
 
+# Profiles, one per compose project:
+# - dev: the task API, one executor, the business mock without its admin API.
+# - experiment: for scenario runs (`pnpm scenario`). Two executors that kill themselves at the
+#   fault points a run plans and come back by restart policy, and a business mock whose admin
+#   API resets scenario data.
+
 # APP_IMAGE_TAG: parallel stacks built from different checkouts each use their own tag.
 x-app: &app
   image: reckon-app:${APP_IMAGE_TAG:-dev}
   build: .
+  # Keeps the app process from being PID 1, which would ignore its own SIGKILL.
   init: true
   depends_on:
     postgres:
@@ -14,6 +21,25 @@ x-app-healthcheck: &app-healthcheck
   timeout: 3s
   retries: 5
   start_period: 10s
+  test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+
+x-executor: &executor
+  <<: *app
+  command: ["node", "apps/executor/src/main.ts"]
+  # The API applies the execution database's migrations before it reports healthy.
+  depends_on:
+    postgres:
+      condition: service_healthy
+    api:
+      condition: service_healthy
+  healthcheck: *app-healthcheck
+
+x-business-mock: &business-mock
+  <<: *app
+  command: ["node", "apps/business-mock/src/main.ts"]
+  ports:
+    - "${BUSINESS_MOCK_PORT:-3100}:3000"
+  healthcheck: *app-healthcheck
 
 services:
   postgres:
@@ -22,6 +48,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       EXECUTION_DB_PASSWORD: ${EXECUTION_DB_PASSWORD:-execution}
       BUSINESS_DB_PASSWORD: ${BUSINESS_DB_PASSWORD:-business}
+      BUSINESS_READER_DB_PASSWORD: ${BUSINESS_READER_DB_PASSWORD:-business_reader}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -36,49 +63,50 @@ services:
 
   api:
     <<: *app
-    profiles: [dev]
+    profiles: [dev, experiment]
     command: ["node", "apps/api/src/main.ts"]
     environment:
       PORT: "3000"
       EXECUTION_DATABASE_URL: postgres://execution:${EXECUTION_DB_PASSWORD:-execution}@postgres:5432/execution
     ports:
       - "${API_PORT:-3000}:3000"
-    healthcheck:
-      <<: *app-healthcheck
-      test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
+    healthcheck: *app-healthcheck
 
   executor:
-    <<: *app
+    <<: *executor
     profiles: [dev]
-    command: ["node", "apps/executor/src/main.ts"]
     environment:
       PORT: "3000"
       EXECUTION_DATABASE_URL: postgres://execution:${EXECUTION_DB_PASSWORD:-execution}@postgres:5432/execution
       BUSINESS_SERVICE_URL: http://business-mock:3000
-    # The API applies the execution database's migrations before it reports healthy.
-    depends_on:
-      postgres:
-        condition: service_healthy
-      api:
-        condition: service_healthy
-    healthcheck:
-      <<: *app-healthcheck
-      test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
 
   business-mock:
-    <<: *app
+    <<: *business-mock
     profiles: [dev]
-    command: ["node", "apps/business-mock/src/main.ts"]
     environment:
       PORT: "3000"
       BUSINESS_DATABASE_URL: postgres://business:${BUSINESS_DB_PASSWORD:-business}@postgres:5432/business
-      # The evaluator resets scenario data through it.
+
+  experiment-executor:
+    <<: *executor
+    profiles: [experiment]
+    deploy:
+      replicas: 2
+    # A killed executor's container comes back while its peer recovers the task.
+    restart: on-failure
+    environment:
+      PORT: "3000"
+      EXECUTION_DATABASE_URL: postgres://execution:${EXECUTION_DB_PASSWORD:-execution}@postgres:5432/execution
+      BUSINESS_SERVICE_URL: http://experiment-business-mock:3000
+
+  experiment-business-mock:
+    <<: *business-mock
+    profiles: [experiment]
+    environment:
+      PORT: "3000"
+      BUSINESS_DATABASE_URL: postgres://business:${BUSINESS_DB_PASSWORD:-business}@postgres:5432/business
+      # Only here: the evaluator resets scenario data and sets fault modes through it.
       ADMIN_API_ENABLED: "true"
-    ports:
-      - "${BUSINESS_MOCK_PORT:-3100}:3000"
-    healthcheck:
-      <<: *app-healthcheck
-      test: ["CMD", "node", "scripts/healthcheck.ts", "http://127.0.0.1:3000/health"]
 
 volumes:
   postgres-data:

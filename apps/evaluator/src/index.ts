@@ -4,7 +4,13 @@ export {
   connectBusinessReader,
   type FoundAftersales,
 } from "./business-assertions.ts";
-export { runScenario, type ScenarioEnvironment, type ScenarioResult } from "./run-scenario.ts";
+export { type FaultReport, type RecoveryTimings, reportFaults } from "./recovery-timings.ts";
+export {
+  type RunOptions,
+  runScenario,
+  type ScenarioEnvironment,
+  type ScenarioResult,
+} from "./run-scenario.ts";
 export {
   type BusinessAssertion,
   InvalidScenarioError,
