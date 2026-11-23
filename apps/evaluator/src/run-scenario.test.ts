@@ -1,63 +1,24 @@
-import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { createAftersalesPackage } from "@reckon/aftersales";
-import { buildApp } from "@reckon/api";
-import { type BusinessMockUnderTest, startBusinessMock } from "@reckon/business-mock/test-support";
-import { createExecutor, type Executor, modelOfRun } from "@reckon/kernel";
-import { type ExecutionTestDatabase, startExecutionTestDatabase } from "@reckon/kernel/testing";
-import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import {
-  type BusinessReader,
-  connectBusinessReader,
+  generateDataset,
   loadScenario,
+  parseScenario,
   runScenario,
   type ScenarioEnvironment,
 } from "./index.ts";
+import { type StackUnderTest, startStackUnderTest } from "./test-support.ts";
 
-// The services of the compose stack, run in-process on their own databases.
-let mock: BusinessMockUnderTest;
-let database: ExecutionTestDatabase;
-let api: FastifyInstance;
-let executor: Executor;
-let business: BusinessReader;
+let stack: StackUnderTest;
 let environment: ScenarioEnvironment;
 
-async function listen(app: FastifyInstance): Promise<string> {
-  await app.listen({ host: "127.0.0.1", port: 0 });
-  return `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
-}
-
 beforeAll(async () => {
-  mock = await startBusinessMock();
-  const businessMockUrl = await listen(mock.app);
-  database = await startExecutionTestDatabase();
-  api = buildApp(database.pool);
-  executor = createExecutor({
-    db: database.db,
-    owner: "executor-1",
-    businessPackage: createAftersalesPackage({ businessServiceUrl: businessMockUrl }),
-    model: modelOfRun(database.db),
-    pollIntervalMs: 20,
-  });
-  executor.start();
-  business = connectBusinessReader(mock.databaseUrl);
-  environment = {
-    taskApiUrl: await listen(api),
-    businessMockUrl,
-    executionDb: database.db,
-    business,
-    pollIntervalMs: 20,
-    turnTimeoutMs: 10_000,
-  };
+  stack = await startStackUnderTest();
+  environment = stack.environment;
 });
 
 afterAll(async () => {
-  await executor.stop();
-  await business.close();
-  await api.close();
-  await database.close();
-  await mock.close();
+  await stack.close();
 });
 
 const returnOneKettle = join(import.meta.dirname, "../scenarios/return-one-kettle.json");
@@ -109,4 +70,22 @@ test("the simulated user refuses to confirm parameters it does not expect, so no
     { passed: false, found: [] },
     { passed: true, found: [] },
   ]);
+});
+
+test("a simulated user choosing among the offered options does not guess when more than one fits", async () => {
+  const [candidates] = generateDataset().dev.filter(
+    ({ template }) => template === "candidate-orders",
+  );
+  const scenario = parseScenario(candidates?.scenario);
+  // The product the customer bought in every candidate order, so every option mentions it.
+  const productName = scenario.business.orders[0]?.lines[0]?.productName ?? "";
+  const ambiguous = {
+    ...scenario.simulatedUser,
+    answers: { ...scenario.simulatedUser.answers, orderId: { choose: productName } },
+  };
+
+  const result = await runScenario({ ...scenario, simulatedUser: ambiguous }, environment);
+
+  expect(result.conversation).toMatchObject({ ended: "question_unanswered", taskState: "CLOSED" });
+  expect(result.assertions.flatMap((assertion) => assertion.found)).toEqual([]);
 });

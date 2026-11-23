@@ -1,0 +1,103 @@
+{
+  "name": "test-complete-info-one-line-1",
+  "description": "信息完整：订单只有一个商品行，顾客一次说清订单、商品、数量和原因。",
+  "seed": "test-complete-info-one-line-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-34150",
+        "customerId": "C-9448",
+        "status": "delivered",
+        "deliveredDaysAgo": 25,
+        "lines": [{ "id": "L1", "productName": "加湿器", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-9448",
+    "messages": ["我想退订单 O-34150 里的 2 件加湿器，原因是尺寸不合适。"],
+    "answers": {
+      "orderId": "O-34150",
+      "lineId": { "choose": "加湿器" },
+      "quantity": "2 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-34150",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-34150" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-34150" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-34150",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "尺寸不合适",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-34150 的加湿器 2 件，原因“尺寸不合适”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-34150",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "尺寸不合适",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-34150",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

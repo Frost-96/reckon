@@ -1,0 +1,117 @@
+{
+  "name": "test-follow-up-reason-2",
+  "description": "需要追问：顾客没说退货原因。",
+  "seed": "test-follow-up-reason-2",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-65883",
+        "customerId": "C-3316",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [
+          { "id": "L1", "productName": "折叠伞", "quantity": 1 },
+          { "id": "L2", "productName": "马克杯", "quantity": 1 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-3316",
+    "messages": ["我想退订单 O-65883 里的1 件折叠伞。"],
+    "answers": {
+      "orderId": "O-65883",
+      "lineId": { "choose": "折叠伞" },
+      "quantity": "1 件",
+      "reason": "收到时外包装破损"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-65883",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "收到时外包装破损",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-65883" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-65883" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-65883",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "收到时外包装破损",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-65883 的折叠伞 1 件，原因“收到时外包装破损”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-65883",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "收到时外包装破损",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-65883",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-65883", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

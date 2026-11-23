@@ -1,0 +1,120 @@
+{
+  "name": "test-follow-up-quantity-1",
+  "description": "需要追问：商品买了多件，顾客没说退几件。",
+  "seed": "test-follow-up-quantity-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-27516",
+        "customerId": "C-3215",
+        "status": "delivered",
+        "deliveredDaysAgo": 5,
+        "lines": [
+          { "id": "L1", "productName": "收纳箱", "quantity": 2 },
+          { "id": "L2", "productName": "电动牙刷", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-3215",
+    "messages": ["我想退订单 O-27516 里的电动牙刷，原因是尺寸不合适。"],
+    "answers": {
+      "orderId": "O-27516",
+      "lineId": { "choose": "电动牙刷" },
+      "quantity": "1 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-27516",
+          "lineId": "L2",
+          "quantity": 1,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-27516" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "请问要退几件电动牙刷？最多可退 2 件。",
+                "slot": "quantity"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-27516" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-27516",
+                  "lineId": "L2",
+                  "quantity": 1,
+                  "reason": "尺寸不合适",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-27516 的电动牙刷 1 件，原因“尺寸不合适”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-27516",
+                "lineId": "L2",
+                "quantity": 1,
+                "reason": "尺寸不合适",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-27516", "lineId": "L1", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-27516",
+        "lineId": "L2",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

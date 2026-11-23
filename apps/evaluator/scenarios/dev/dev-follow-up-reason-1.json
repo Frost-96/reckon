@@ -1,0 +1,119 @@
+{
+  "name": "dev-follow-up-reason-1",
+  "description": "需要追问：顾客没说退货原因。",
+  "seed": "dev-follow-up-reason-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-31792",
+        "customerId": "C-5196",
+        "status": "delivered",
+        "deliveredDaysAgo": 3,
+        "lines": [
+          { "id": "L1", "productName": "毛巾套装", "quantity": 1 },
+          { "id": "L2", "productName": "空气炸锅", "quantity": 1 },
+          { "id": "L3", "productName": "加湿器", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5196",
+    "messages": ["我想退订单 O-31792 里的2 件加湿器。"],
+    "answers": {
+      "orderId": "O-31792",
+      "lineId": { "choose": "加湿器" },
+      "quantity": "2 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-31792",
+          "lineId": "L3",
+          "quantity": 2,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-31792" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-31792" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-31792",
+                  "lineId": "L3",
+                  "quantity": 2,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-31792 的加湿器 2 件，原因“功能不符合预期”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-31792",
+                "lineId": "L3",
+                "quantity": 2,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-31792", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-31792", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-31792",
+        "lineId": "L3",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

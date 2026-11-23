@@ -1,0 +1,117 @@
+{
+  "name": "test-follow-up-quantity-2",
+  "description": "需要追问：商品买了多件，顾客没说退几件。",
+  "seed": "test-follow-up-quantity-2",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-32537",
+        "customerId": "C-8121",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [
+          { "id": "L1", "productName": "马克杯", "quantity": 3 },
+          { "id": "L2", "productName": "电水壶", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-8121",
+    "messages": ["我想退订单 O-32537 里的马克杯，原因是不想要了。"],
+    "answers": {
+      "orderId": "O-32537",
+      "lineId": { "choose": "马克杯" },
+      "quantity": "2 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-32537",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "不想要了",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-32537" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问要退几件马克杯？最多可退 3 件。", "slot": "quantity" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-32537" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-32537",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "不想要了",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-32537 的马克杯 2 件，原因“不想要了”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-32537",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "不想要了",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-32537",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-32537", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

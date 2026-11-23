@@ -52,6 +52,7 @@ export async function runScenario(
   const assertions = await checkBusinessAssertions(
     environment.business.db,
     scenario.expected.business,
+    new Set(scenario.business.aftersales.map((record) => record.id)),
   );
   const actual = outcomeOf(conversation);
   const achieved = actual === scenario.expected.outcome;

@@ -1,0 +1,102 @@
+{
+  "name": "test-eligibility-active-application-2",
+  "description": "不符合条件：这行商品已有他人提交的进行中申请；查询结果仍有可退数量，顾客确认后业务服务在写入时拒绝，Agent 说明原因。",
+  "seed": "test-eligibility-active-application-2",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-71307",
+        "customerId": "C-1200",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [{ "id": "L1", "productName": "无线鼠标", "quantity": 2 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-71307",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 500,
+        "quantity": 1,
+        "status": "in_progress"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-1200",
+    "messages": ["我想退订单 O-71307 里的 1 件无线鼠标，原因是功能不符合预期。"],
+    "answers": {
+      "orderId": "O-71307",
+      "lineId": { "choose": "无线鼠标" },
+      "quantity": "1 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-71307",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-71307" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-71307" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-71307",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-71307 的无线鼠标 1 件，原因“功能不符合预期”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-71307",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "抱歉，无线鼠标已有一张处理中的售后申请，需要等它办结后才能再申请退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-71307", "lineId": "L1", "count": 1 }]
+  }
+}

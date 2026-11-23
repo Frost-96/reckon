@@ -1,0 +1,65 @@
+{
+  "name": "dev-eligibility-fully-returned-1",
+  "description": "不符合条件：这行商品已全部退过（售后单已完成），可退数量为 0，Agent 查订单后说明原因。",
+  "seed": "dev-eligibility-fully-returned-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-28902",
+        "customerId": "C-4380",
+        "status": "delivered",
+        "deliveredDaysAgo": 7,
+        "lines": [{ "id": "L1", "productName": "电动牙刷", "quantity": 1 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-28902",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 800,
+        "quantity": 1,
+        "status": "completed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-4380",
+    "messages": ["我想退订单 O-28902 里的 1 件电动牙刷，原因是颜色和图片不一样。"],
+    "answers": {
+      "orderId": "O-28902",
+      "lineId": { "choose": "电动牙刷" },
+      "quantity": "1 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-28902",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-28902" } }]
+        },
+        { "content": "订单 O-28902 里的电动牙刷已经全部退过货了，没有可退的数量。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-28902", "lineId": "L1", "count": 1 }]
+  }
+}

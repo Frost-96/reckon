@@ -1,0 +1,133 @@
+{
+  "name": "test-follow-up-product-and-reason-1",
+  "description": "需要追问：顾客既没说退哪件商品也没说原因，Agent 分两轮追问。",
+  "seed": "test-follow-up-product-and-reason-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-58251",
+        "customerId": "C-7043",
+        "status": "delivered",
+        "deliveredDaysAgo": 8,
+        "lines": [
+          { "id": "L1", "productName": "收纳箱", "quantity": 1 },
+          { "id": "L2", "productName": "机械键盘", "quantity": 2 },
+          { "id": "L3", "productName": "羽绒枕", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-7043",
+    "messages": ["订单 O-58251 里有一件商品我想退。"],
+    "answers": {
+      "orderId": "O-58251",
+      "lineId": { "choose": "收纳箱" },
+      "quantity": "1 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-58251",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-58251" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "请问要退订单里的哪件商品？",
+                "slot": "lineId",
+                "options": ["收纳箱", "机械键盘", "羽绒枕"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-58251" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-58251",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "尺寸不合适",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-58251 的收纳箱 1 件，原因“尺寸不合适”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-58251",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "尺寸不合适",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 15.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-58251",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-58251", "lineId": "L2", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-58251", "lineId": "L3", "count": 0 }
+    ]
+  }
+}

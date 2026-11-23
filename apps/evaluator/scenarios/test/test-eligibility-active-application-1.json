@@ -1,0 +1,102 @@
+{
+  "name": "test-eligibility-active-application-1",
+  "description": "不符合条件：这行商品已有他人提交的进行中申请；查询结果仍有可退数量，顾客确认后业务服务在写入时拒绝，Agent 说明原因。",
+  "seed": "test-eligibility-active-application-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-63346",
+        "customerId": "C-1373",
+        "status": "delivered",
+        "deliveredDaysAgo": 2,
+        "lines": [{ "id": "L1", "productName": "保温杯", "quantity": 2 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-63346",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 1500,
+        "quantity": 1,
+        "status": "in_progress"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-1373",
+    "messages": ["我想退订单 O-63346 里的 1 件保温杯，原因是收到时外包装破损。"],
+    "answers": {
+      "orderId": "O-63346",
+      "lineId": { "choose": "保温杯" },
+      "quantity": "1 件",
+      "reason": "收到时外包装破损"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-63346",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "收到时外包装破损",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-63346" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-63346" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-63346",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "收到时外包装破损",
+                  "returnFeeCents": 1500
+                },
+                "message": "请确认：退订单 O-63346 的保温杯 1 件，原因“收到时外包装破损”，退货运费 15.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-63346",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "收到时外包装破损",
+                "returnFeeCents": 1500
+              }
+            }
+          ]
+        },
+        { "content": "抱歉，保温杯已有一张处理中的售后申请，需要等它办结后才能再申请退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-63346", "lineId": "L1", "count": 1 }]
+  }
+}

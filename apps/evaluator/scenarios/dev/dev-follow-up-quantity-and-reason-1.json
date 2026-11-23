@@ -1,0 +1,127 @@
+{
+  "name": "dev-follow-up-quantity-and-reason-1",
+  "description": "需要追问：顾客既没说数量也没说原因，Agent 分两轮追问。",
+  "seed": "dev-follow-up-quantity-and-reason-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-44307",
+        "customerId": "C-7357",
+        "status": "delivered",
+        "deliveredDaysAgo": 14,
+        "lines": [
+          { "id": "L1", "productName": "毛巾套装", "quantity": 1 },
+          { "id": "L2", "productName": "台灯", "quantity": 3 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-7357",
+    "messages": ["我想退订单 O-44307 里的台灯。"],
+    "answers": {
+      "orderId": "O-44307",
+      "lineId": { "choose": "台灯" },
+      "quantity": "3 件",
+      "reason": "质量有问题"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-44307",
+          "lineId": "L2",
+          "quantity": 3,
+          "reason": "质量有问题",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-44307" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问要退几件台灯？最多可退 3 件。", "slot": "quantity" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": { "question": "请问退货的原因是什么？", "slot": "reason" }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-44307" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-44307",
+                  "lineId": "L2",
+                  "quantity": 3,
+                  "reason": "质量有问题",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-44307 的台灯 3 件，原因“质量有问题”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-44307",
+                "lineId": "L2",
+                "quantity": 3,
+                "reason": "质量有问题",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-44307", "lineId": "L1", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-44307",
+        "lineId": "L2",
+        "count": 1,
+        "quantity": 3,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

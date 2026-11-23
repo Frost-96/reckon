@@ -1,0 +1,58 @@
+{
+  "name": "test-eligibility-window-expired-2",
+  "description": "不符合条件：订单已超过售后期限，Agent 查规则后说明原因。",
+  "seed": "test-eligibility-window-expired-2",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-61943",
+        "customerId": "C-9619",
+        "status": "delivered",
+        "deliveredDaysAgo": 18,
+        "lines": [{ "id": "L1", "productName": "羽绒枕", "quantity": 3 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-9619",
+    "messages": ["我想退订单 O-61943 里的 2 件羽绒枕，原因是收到时外包装破损。"],
+    "answers": {
+      "orderId": "O-61943",
+      "lineId": { "choose": "羽绒枕" },
+      "quantity": "2 件",
+      "reason": "收到时外包装破损"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-61943",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "收到时外包装破损",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-61943" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-61943" } }]
+        },
+        { "content": "抱歉，这笔订单已超过签收后 15 天的售后期限，无法再办理退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-61943", "lineId": "L1", "count": 0 }]
+  }
+}

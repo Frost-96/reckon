@@ -1,0 +1,117 @@
+{
+  "name": "dev-eligibility-other-line-active-1",
+  "description": "符合条件：同一订单的另一行商品有他人提交的进行中申请，不影响这一行。",
+  "seed": "dev-eligibility-other-line-active-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-52105",
+        "customerId": "C-6834",
+        "status": "delivered",
+        "deliveredDaysAgo": 1,
+        "lines": [
+          { "id": "L1", "productName": "蓝牙耳机", "quantity": 3 },
+          { "id": "L2", "productName": "羽绒枕", "quantity": 1 }
+        ]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-52105",
+        "lineId": "L2",
+        "reason": "此前的申请",
+        "returnFeeCents": 800,
+        "quantity": 1,
+        "status": "in_progress"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-6834",
+    "messages": ["我想退订单 O-52105 里的 2 件蓝牙耳机，原因是质量有问题。"],
+    "answers": {
+      "orderId": "O-52105",
+      "lineId": { "choose": "蓝牙耳机" },
+      "quantity": "2 件",
+      "reason": "质量有问题"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-52105",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "质量有问题",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-52105" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-52105" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-52105",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "质量有问题",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-52105 的蓝牙耳机 2 件，原因“质量有问题”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-52105",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "质量有问题",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-52105",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-52105", "lineId": "L2", "count": 1 }
+    ]
+  }
+}

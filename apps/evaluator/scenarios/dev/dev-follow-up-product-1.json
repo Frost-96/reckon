@@ -1,0 +1,121 @@
+{
+  "name": "dev-follow-up-product-1",
+  "description": "需要追问：订单有多个商品，顾客没说退哪件，从选项中选择。",
+  "seed": "dev-follow-up-product-1",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-98487",
+        "customerId": "C-3424",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "折叠伞", "quantity": 1 },
+          { "id": "L2", "productName": "毛巾套装", "quantity": 1 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-3424",
+    "messages": ["订单 O-98487 里有一件商品我想退，原因是功能不符合预期。"],
+    "answers": {
+      "orderId": "O-98487",
+      "lineId": { "choose": "毛巾套装" },
+      "quantity": "1 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-98487",
+          "lineId": "L2",
+          "quantity": 1,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-98487" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "请问要退订单里的哪件商品？",
+                "slot": "lineId",
+                "options": ["折叠伞", "毛巾套装"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-98487" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-98487",
+                  "lineId": "L2",
+                  "quantity": 1,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-98487 的毛巾套装 1 件，原因“功能不符合预期”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-98487",
+                "lineId": "L2",
+                "quantity": 1,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-98487", "lineId": "L1", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-98487",
+        "lineId": "L2",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

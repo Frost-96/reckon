@@ -1,0 +1,141 @@
+{
+  "name": "test-candidate-orders-three-orders-1",
+  "description": "多个候选订单：顾客在三笔订单里都买过这件商品。",
+  "seed": "test-candidate-orders-three-orders-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 1000 },
+    "orders": [
+      {
+        "id": "O-52287",
+        "customerId": "C-2727",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "空气炸锅", "quantity": 1 },
+          { "id": "L2", "productName": "毛巾套装", "quantity": 3 }
+        ]
+      },
+      {
+        "id": "O-56689",
+        "customerId": "C-2727",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [{ "id": "L1", "productName": "空气炸锅", "quantity": 2 }]
+      },
+      {
+        "id": "O-61007",
+        "customerId": "C-2727",
+        "status": "delivered",
+        "deliveredDaysAgo": 1,
+        "lines": [{ "id": "L1", "productName": "空气炸锅", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-2727",
+    "messages": ["我想退 1 件空气炸锅，原因是买重复了。我买过不止一次，记不清是哪笔订单了。"],
+    "answers": {
+      "orderId": { "choose": "O-56689" },
+      "lineId": { "choose": "空气炸锅" },
+      "quantity": "1 件",
+      "reason": "买重复了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-56689",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "买重复了",
+          "returnFeeCents": 1000
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 3 笔订单买过空气炸锅，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": [
+                  "O-52287（空气炸锅 1 件）",
+                  "O-56689（空气炸锅 2 件）",
+                  "O-61007（空气炸锅 2 件）"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-56689" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-56689",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "买重复了",
+                  "returnFeeCents": 1000
+                },
+                "message": "请确认：退订单 O-56689 的空气炸锅 1 件，原因“买重复了”，退货运费 10.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-56689",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "买重复了",
+                "returnFeeCents": 1000
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 10.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-52287", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-52287", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-56689",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 1000,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-61007", "lineId": "L1", "count": 0 }
+    ]
+  }
+}
