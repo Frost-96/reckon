@@ -89,3 +89,61 @@ test("a simulated user choosing among the offered options does not guess when mo
   expect(result.conversation).toMatchObject({ ended: "question_unanswered", taskState: "CLOSED" });
   expect(result.assertions.flatMap((assertion) => assertion.found)).toEqual([]);
 });
+
+test("the executor drops itself between the two writes and a peer finishes the return, written exactly once", async () => {
+  const scenario = await loadScenario(returnOneKettle);
+
+  const result = await runScenario(scenario, environment, {
+    faultPlan: [{ point: "after_write_confirmed", target: "create_aftersales" }],
+  });
+
+  expect(result).toMatchObject({
+    passed: true,
+    outcome: { expected: "auto_completed", actual: "auto_completed", achieved: true },
+    conversation: { ended: "script_completed", taskState: "CLOSED" },
+  });
+  expect(result.assertions).toMatchObject([
+    { passed: true, found: [{ quantity: 1, returnShipment: true }] },
+    { passed: true, found: [] },
+  ]);
+  const recovery = {
+    detectionMs: expect.any(Number),
+    claimMs: expect.any(Number),
+    rebuildMs: expect.any(Number),
+    resumeMs: expect.any(Number),
+  };
+  expect(result.faults).toEqual([
+    {
+      faultPoint: "after_write_confirmed:create_aftersales",
+      fired: true,
+      recovery,
+      // Reported on its own: a peer, not the restarted instance, carries the recovery.
+      containerRestartMs: expect.any(Number),
+    },
+  ]);
+  for (const segment of Object.values(result.faults[0]?.recovery ?? {})) {
+    expect(segment).toBeGreaterThanOrEqual(0);
+  }
+});
+
+test("a run whose planned fault point was never reached does not pass, though the return went through", async () => {
+  const scenario = await loadScenario(returnOneKettle);
+
+  const result = await runScenario(scenario, environment, {
+    faultPlan: [{ point: "after_write_confirmed", target: "no_such_operation" }],
+  });
+
+  expect(result).toMatchObject({
+    passed: false,
+    outcome: { actual: "auto_completed", achieved: true },
+    faults: [
+      {
+        faultPoint: "after_write_confirmed:no_such_operation",
+        fired: false,
+        recovery: null,
+        containerRestartMs: null,
+      },
+    ],
+  });
+  expect(result.assertions.every((assertion) => assertion.passed)).toBe(true);
+});
