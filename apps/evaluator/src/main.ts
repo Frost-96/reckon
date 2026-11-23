@@ -15,8 +15,10 @@ import { InvalidScenarioError, loadScenario } from "./scenario.ts";
 // Defaults reach a stack started by `docker compose --profile experiment` with the same port
 // variables. Each --fault adds a fault point to the run's fault plan, e.g.
 // --fault after_write_confirmed:create_aftersales (point, then optionally the tool or operation).
+// --watch-stream follows the task's event stream as the customer's client would and reports the
+// drafts it showed; the run then passes only if the view ended as the written conversation.
 
-const usage = `Usage: pnpm scenario <scenario.json> [--fault <point>[:<target>]]...
+const usage = `Usage: pnpm scenario <scenario.json> [--fault <point>[:<target>]]... [--watch-stream]
 Fault points: ${faultPointNames.join(", ")}`;
 
 function fail(message: string): never {
@@ -27,7 +29,10 @@ function fail(message: string): never {
 function parseCommandLine() {
   return parseArgs({
     allowPositionals: true,
-    options: { fault: { type: "string", multiple: true, default: [] } },
+    options: {
+      fault: { type: "string", multiple: true, default: [] },
+      "watch-stream": { type: "boolean", default: false },
+    },
   });
 }
 
@@ -80,7 +85,7 @@ try {
       executionDb: connectExecutionDb(executionPool),
       business,
     },
-    { faultPlan },
+    { faultPlan, watchStream: args.values["watch-stream"] },
   );
   console.log(JSON.stringify(result, null, 2));
   process.exitCode = result.passed ? 0 : 1;

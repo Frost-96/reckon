@@ -10,6 +10,7 @@ import {
   type Task,
   TaskNotFoundError,
   TaskNotWaitingForCustomerError,
+  type UserVisibleMessage,
 } from "@reckon/kernel";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -34,7 +35,7 @@ function parseRequest<T extends z.ZodType>(schema: T, input: unknown): z.output<
   return result.data;
 }
 
-function taskNotFound(): never {
+export function taskNotFound(): never {
   throw new ApiError(404, "TASK_NOT_FOUND", "No such task");
 }
 
@@ -55,7 +56,7 @@ const customerMessageBody = z
   .strict();
 
 // Task ids are UUIDs; anything else cannot name a task.
-function taskIdOf(params: unknown): string {
+export function taskIdOf(params: unknown): string {
   const { taskId } = parseRequest(taskParams, params);
   return z.uuid().safeParse(taskId).success ? taskId : taskNotFound();
 }
@@ -68,6 +69,10 @@ function taskView(task: Task) {
     state: task.state,
     turn: task.turn,
   };
+}
+
+export function messageView({ turn, seq, role, content, payload, createdAt }: UserVisibleMessage) {
+  return { turn, seq, role, content, payload, createdAt: createdAt.toISOString() };
 }
 
 // Maps the kernel's refusals of a customer action on a task to API errors.
@@ -129,14 +134,6 @@ export function registerTaskRoutes(app: FastifyInstance, db: ExecutionDb): void 
     if ((await getTask(db, taskId)) === undefined) {
       taskNotFound();
     }
-    const messages = await listUserVisibleMessages(db, taskId);
-    return messages.map(({ turn, seq, role, content, payload, createdAt }) => ({
-      turn,
-      seq,
-      role,
-      content,
-      payload,
-      createdAt: createdAt.toISOString(),
-    }));
+    return (await listUserVisibleMessages(db, taskId)).map(messageView);
   });
 }

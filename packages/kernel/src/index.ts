@@ -81,12 +81,20 @@ export {
   type ToolStep,
 } from "./step-log.ts";
 export {
+  type DraftNotification,
+  listenForTaskNotifications,
+  type TaskNotification,
+  type TaskNotificationHandlers,
+  type TaskNotificationListener,
+} from "./task-notifications.ts";
+export {
   appendUserVisibleMessage,
   ConfirmationNotPendingError,
   type CustomerMessageOptions,
   closeTask,
   createTask,
   getTask,
+  getUserVisibleMessage,
   listUserVisibleMessages,
   type MessagePayload,
   type MessageRole,

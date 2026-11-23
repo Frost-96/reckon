@@ -39,8 +39,9 @@ export interface ModelResponse {
 
 export interface ModelCallOptions {
   signal?: AbortSignal;
-  // Text fragments as they stream in; only a draft until the response is complete.
-  onTextDelta?: (delta: string) => void;
+  // Text fragments as they stream in; only a draft until the response is complete. Awaited
+  // before the next fragment, so fragments are taken in order and one can hold the call there.
+  onTextDelta?: (delta: string) => void | Promise<void>;
 }
 
 export interface ModelClient {
