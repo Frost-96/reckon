@@ -28,6 +28,8 @@ export interface ConversationOptions {
   runId: string;
   pollIntervalMs: number;
   turnTimeoutMs: number;
+  // Runs once the task exists, before the user says anything.
+  onTaskCreated?: (taskId: string) => Promise<void>;
 }
 
 type Reply = { content: string; confirms?: number } | { end: ConversationEnd };
@@ -39,6 +41,7 @@ export async function converse(
   options: ConversationOptions,
 ): Promise<Conversation> {
   const task = await api.createTask({ customerId: user.customerId, runId: options.runId });
+  await options.onTaskCreated?.(task.id);
   const [opening, ...followUps] = user.messages;
   let reply: Reply = { content: opening ?? "" };
   while (!("end" in reply)) {

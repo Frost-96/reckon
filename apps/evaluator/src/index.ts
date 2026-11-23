@@ -5,6 +5,14 @@ export {
   type FoundAftersales,
 } from "./business-assertions.ts";
 export {
+  type CustomerView,
+  type DraftEvent,
+  type DraftFate,
+  type DraftRecord,
+  type StreamEvent,
+  viewOf,
+} from "./customer-view.ts";
+export {
   type Dataset,
   type GeneratedScenario,
   generateDataset,
@@ -34,6 +42,7 @@ export {
   runScenario,
   type ScenarioEnvironment,
   type ScenarioResult,
+  type StreamReport,
 } from "./run-scenario.ts";
 export {
   type BusinessAssertion,
@@ -52,3 +61,4 @@ export {
   scenarioTemplates,
 } from "./scenario-templates.ts";
 export type { Conversation, ConversationEnd } from "./simulated-user.ts";
+export { followTask, type TaskStream } from "./task-stream.ts";

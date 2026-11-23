@@ -1,6 +1,7 @@
 import { connectExecutionDb, createWatchdog } from "@reckon/kernel";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
+import { createTaskEventHub, registerTaskEventRoutes } from "./task-events.ts";
 import { ApiError, registerTaskRoutes } from "./tasks.ts";
 
 export interface AppOptions {
@@ -31,6 +32,11 @@ export function buildApp(pool: pg.Pool, options: AppOptions = {}): FastifyInstan
   });
 
   registerTaskRoutes(app, db);
+
+  const hub = createTaskEventHub(pool, db, (error) => console.error(error));
+  registerTaskEventRoutes(app, db, hub);
+  // Open event streams would keep the server from closing; they end first.
+  app.addHook("preClose", async () => hub.close());
 
   // The lease watchdog lives in the task API, apart from the executors whose leases it watches.
   const { watchdogScanIntervalMs } = options;

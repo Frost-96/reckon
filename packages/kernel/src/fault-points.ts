@@ -4,6 +4,7 @@ export const faultPointNames = [
   "after_read_before_checkpoint",
   "after_prepared",
   "after_write_confirmed",
+  "mid_model_stream",
 ] as const;
 
 // Named semantic events where a fault plan can drop the executor. A hook that throws there ends
@@ -18,7 +19,9 @@ export type FaultPoint =
       taskId: string;
       operation: string;
       operationId: string;
-    };
+    }
+  // A model call has pushed its first text fragment as a draft and is not complete yet.
+  | { name: "mid_model_stream"; taskId: string };
 
 export type FaultPointHook = (point: FaultPoint) => void | Promise<void>;
 
@@ -49,6 +52,16 @@ export function parseFaultPointLabel(label: string): PlannedFault {
 }
 
 export function reachesPlannedFault(point: FaultPoint, fault: PlannedFault): boolean {
-  const target = point.name === "after_read_before_checkpoint" ? point.tool : point.operation;
-  return point.name === fault.point && (fault.target === undefined || fault.target === target);
+  if (point.name !== fault.point) {
+    return false;
+  }
+  switch (point.name) {
+    case "after_read_before_checkpoint":
+      return fault.target === undefined || fault.target === point.tool;
+    // Nothing to narrow it to: a target there is never reached.
+    case "mid_model_stream":
+      return fault.target === undefined;
+    default:
+      return fault.target === undefined || fault.target === point.operation;
+  }
 }

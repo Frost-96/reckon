@@ -1,8 +1,9 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { confirmByCustomer } from "./confirmations.ts";
 import type { ExecutionDb, ExecutionQueries } from "./db/database.ts";
 import { type messageRoles, type taskStates, tasks, userVisibleMessages } from "./db/schema.ts";
 import { getRun, RunNotFoundError } from "./runs.ts";
+import { notifyTask } from "./task-notifications.ts";
 
 export type TaskState = (typeof taskStates)[number];
 export type Task = typeof tasks.$inferSelect;
@@ -157,12 +158,20 @@ export async function closeTask(db: ExecutionDb, taskId: string): Promise<Task> 
   });
 }
 
-// Keyed by (task, turn, seq): writing the same message again is ignored.
+// Keyed by (task, turn, seq): writing the same message again is ignored, and announced only once.
 export async function appendUserVisibleMessage(
   db: ExecutionQueries,
   message: Omit<UserVisibleMessage, "createdAt" | "payload"> & { payload?: MessagePayload },
 ): Promise<void> {
-  await db.insert(userVisibleMessages).values(message).onConflictDoNothing();
+  const written = await db
+    .insert(userVisibleMessages)
+    .values(message)
+    .onConflictDoNothing()
+    .returning({ seq: userVisibleMessages.seq });
+  if (written.length > 0) {
+    const { taskId, turn, seq } = message;
+    await notifyTask(db, { kind: "message", taskId, turn, seq });
+  }
 }
 
 export async function listUserVisibleMessages(
@@ -174,5 +183,26 @@ export async function listUserVisibleMessages(
     .from(userVisibleMessages)
     .where(eq(userVisibleMessages.taskId, taskId))
     .orderBy(asc(userVisibleMessages.turn), asc(userVisibleMessages.seq));
-  return rows.map((row) => ({ ...row, payload: row.payload as MessagePayload | null }));
+  return rows.map(asUserVisibleMessage);
+}
+
+export async function getUserVisibleMessage(
+  db: ExecutionQueries,
+  key: { taskId: string; turn: number; seq: number },
+): Promise<UserVisibleMessage | undefined> {
+  const [row] = await db
+    .select()
+    .from(userVisibleMessages)
+    .where(
+      and(
+        eq(userVisibleMessages.taskId, key.taskId),
+        eq(userVisibleMessages.turn, key.turn),
+        eq(userVisibleMessages.seq, key.seq),
+      ),
+    );
+  return row === undefined ? undefined : asUserVisibleMessage(row);
+}
+
+function asUserVisibleMessage(row: typeof userVisibleMessages.$inferSelect): UserVisibleMessage {
+  return { ...row, payload: row.payload as MessagePayload | null };
 }

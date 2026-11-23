@@ -14,6 +14,7 @@ import {
   type ToolStep,
 } from "./step-log.ts";
 import { asStoredJson } from "./stored-json.ts";
+import { notifyTask } from "./task-notifications.ts";
 import {
   appendUserVisibleMessage,
   listUserVisibleMessages,
@@ -72,11 +73,15 @@ export async function runTurn(context: TurnContext): Promise<void> {
     }
 
     const request = buildModelRequest(context, history);
-    const response = await model.complete(request, { signal });
+    const seq = history.steps.length + 1;
+    const response = await model.complete(request, {
+      signal,
+      onTextDelta: draftPublisher(context, seq),
+    });
     signal.throwIfAborted();
     const step: ModelStep = {
       taskId: lease.taskId,
-      seq: history.steps.length + 1,
+      seq,
       turn: lease.turn,
       kind: "model",
       status: "ok",
@@ -102,6 +107,20 @@ export async function runTurn(context: TurnContext): Promise<void> {
     });
     return;
   }
+}
+
+// Pushes the text of the model call that will be logged as step `seq` as it streams in.
+function draftPublisher(context: TurnContext, seq: number): (text: string) => Promise<void> {
+  const { db, lease } = context;
+  const draft = { taskId: lease.taskId, turn: lease.turn, step: seq, attempt: lease.version };
+  let index = 0;
+  return async (text) => {
+    await notifyTask(db, { kind: "draft", ...draft, index, text });
+    index += 1;
+    if (index === 1) {
+      await context.onFaultPoint({ name: "mid_model_stream", taskId: lease.taskId });
+    }
+  };
 }
 
 async function loadHistory(db: ExecutionDb, taskId: string): Promise<TaskHistory> {

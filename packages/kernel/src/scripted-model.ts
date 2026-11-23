@@ -78,7 +78,7 @@ async function stream(
 ): Promise<ModelResponse> {
   for (const fragment of fragments(scripted.content ?? "")) {
     options.signal?.throwIfAborted();
-    options.onTextDelta?.(fragment);
+    await options.onTextDelta?.(fragment);
   }
   options.signal?.throwIfAborted();
   return toResponse(scripted, callIdPrefix);

@@ -147,3 +147,62 @@ test("a run whose planned fault point was never reached does not pass, though th
   });
   expect(result.assertions.every((assertion) => assertion.passed)).toBe(true);
 });
+
+const orderStatusStreamed = join(import.meta.dirname, "../scenarios/order-status-streamed.json");
+
+test("the customer following the stream sees each draft give way to the written message, also drafts of calls that went on to tools", async () => {
+  const scenario = await loadScenario(returnOneKettle);
+
+  const result = await runScenario(scenario, environment, { watchStream: true });
+
+  expect(result.passed).toBe(true);
+  expect(result.stream).toEqual({
+    consistent: true,
+    drafts: [
+      { turn: 1, step: 1, attempt: 1, text: "我先查一下这笔订单。", fate: "replaced" },
+      {
+        turn: 3,
+        step: 9,
+        attempt: 3,
+        text: "已为您提交退货申请，并生成了寄回单。",
+        fate: "replaced",
+      },
+      {
+        turn: 4,
+        step: 12,
+        attempt: 4,
+        text: "您的退货申请正在处理中，电水壶还可再退 1 件。",
+        fate: "replaced",
+      },
+    ],
+  });
+});
+
+test("the executor drops itself while the reply streams in: the customer's draft is discarded for the peer's new attempt and the reply shows once", async () => {
+  const scenario = await loadScenario(orderStatusStreamed);
+  const reply =
+    "您的订单 O1 已于两天前签收，包含电水壶 2 件和马克杯 1 件；如需退货，签收后 7 天内都可以申请。";
+
+  const result = await runScenario(scenario, environment, {
+    faultPlan: [{ point: "mid_model_stream" }],
+    watchStream: true,
+  });
+
+  expect(result).toMatchObject({
+    passed: true,
+    outcome: { actual: "auto_completed", achieved: true },
+    conversation: { ended: "script_completed", taskState: "CLOSED" },
+    faults: [{ faultPoint: "mid_model_stream", fired: true }],
+  });
+  expect(result.stream).toEqual({
+    consistent: true,
+    drafts: [
+      { turn: 1, step: 3, attempt: 1, text: "您的订单", fate: "discarded" },
+      { turn: 1, step: 3, attempt: 2, text: reply, fate: "replaced" },
+    ],
+  });
+  expect(result.conversation.messages).toMatchObject([
+    { role: "customer", content: "我的订单 O1 现在是什么状态？" },
+    { role: "agent", seq: 3, content: reply },
+  ]);
+});
