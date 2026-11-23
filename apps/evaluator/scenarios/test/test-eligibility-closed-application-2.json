@@ -1,0 +1,115 @@
+{
+  "name": "test-eligibility-closed-application-2",
+  "description": "符合条件：这行商品有一张已关闭的售后单，关闭的申请不占可退数量。",
+  "seed": "test-eligibility-closed-application-2",
+  "business": {
+    "policy": { "returnWindowDays": 15, "returnFeeCents": 0 },
+    "orders": [
+      {
+        "id": "O-63114",
+        "customerId": "C-9703",
+        "status": "delivered",
+        "deliveredDaysAgo": 3,
+        "lines": [{ "id": "L1", "productName": "陶瓷碗", "quantity": 1 }]
+      }
+    ],
+    "aftersales": [
+      {
+        "id": "AS-EARLIER-1",
+        "orderId": "O-63114",
+        "lineId": "L1",
+        "reason": "此前的申请",
+        "returnFeeCents": 0,
+        "quantity": 1,
+        "status": "closed"
+      }
+    ]
+  },
+  "simulatedUser": {
+    "customerId": "C-9703",
+    "messages": ["我想退订单 O-63114 里的 1 件陶瓷碗，原因是功能不符合预期。"],
+    "answers": {
+      "orderId": "O-63114",
+      "lineId": { "choose": "陶瓷碗" },
+      "quantity": "1 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-63114",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 0
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-63114" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-63114" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-63114",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 0
+                },
+                "message": "请确认：退订单 O-63114 的陶瓷碗 1 件，原因“功能不符合预期”，退货运费 0.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-63114",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 0
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 0.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-63114", "lineId": "L1", "count": 2 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-63114",
+        "lineId": "L1",
+        "includeSeeded": false,
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 0,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

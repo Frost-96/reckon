@@ -1,0 +1,107 @@
+{
+  "name": "test-complete-info-whole-line-1",
+  "description": "信息完整：顾客把一个商品行的全部数量都退掉。",
+  "seed": "test-complete-info-whole-line-1",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-89238",
+        "customerId": "C-5950",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "毛巾套装", "quantity": 2 },
+          { "id": "L2", "productName": "蓝牙耳机", "quantity": 3 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-5950",
+    "messages": ["我想退订单 O-89238 里的 2 件毛巾套装，原因是不想要了。"],
+    "answers": {
+      "orderId": "O-89238",
+      "lineId": { "choose": "毛巾套装" },
+      "quantity": "2 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-89238",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "不想要了",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-89238" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-89238" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-89238",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "不想要了",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-89238 的毛巾套装 2 件，原因“不想要了”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-89238",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "不想要了",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-89238",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-89238", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

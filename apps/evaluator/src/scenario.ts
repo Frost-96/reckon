@@ -55,8 +55,14 @@ const simulatedUser = z
     // The opening message, then one more after each plain reply of the agent. After the last
     // one is answered, the user ends the session.
     messages: z.array(z.string().min(1)).min(1),
-    // The answer to the agent's question, by the slot the question fills.
-    answers: z.record(z.string(), z.string().min(1)).default({}),
+    // The answer to the agent's question, by the slot the question fills: a fixed text, or the
+    // one offered option containing the given text (the text itself when nothing is offered).
+    answers: z
+      .record(
+        z.string(),
+        z.union([z.string().min(1), z.object({ choose: z.string().min(1) }).strict()]),
+      )
+      .default({}),
     // What the user agrees to. A confirmation request for anything else is refused.
     confirmations: z.array(z.object({ tool: id, parameters: z.unknown() }).strict()).default([]),
     confirmationReply: z.string().min(1).default("确认"),
@@ -77,8 +83,10 @@ const aftersalesAssertion = z
     kind: z.literal("aftersales"),
     orderId: id,
     lineId: id,
-    // Exactly this many aftersales orders on the line, seeded ones included.
+    // Exactly this many aftersales orders on the line, seeded ones included unless excluded.
     count: z.int().nonnegative(),
+    // False: only the records written during the run count, and only they need the fields below.
+    includeSeeded: z.boolean().default(true),
     // Each of them has these, where given.
     quantity: z.int().positive().optional(),
     returnFeeCents: z.int().nonnegative().optional(),

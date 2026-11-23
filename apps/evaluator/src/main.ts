@@ -7,11 +7,13 @@ import {
 } from "@reckon/kernel";
 import pg from "pg";
 import { connectBusinessReader } from "./business-assertions.ts";
+import { defaultFreezeOptions, describeFreezeChange, verifyFreezeBeforeRun } from "./freeze.ts";
 import { runScenario } from "./run-scenario.ts";
 import { InvalidScenarioError, loadScenario } from "./scenario.ts";
 
 // Runs one scenario against a running experiment stack and prints the result as JSON. Exit code
-// 0 when it passed, 1 when it did not, 2 when it could not be run as asked.
+// 0 when it passed, 1 when it did not, 2 when it could not be run as asked (also: a frozen test
+// scenario whose frozen content changed).
 // Defaults reach a stack started by `docker compose --profile experiment` with the same port
 // variables. Each --fault adds a fault point to the run's fault plan, e.g.
 // --fault after_write_confirmed:create_aftersales (point, then optionally the tool or operation).
@@ -65,6 +67,16 @@ try {
   scenario = await loadScenario(path);
 } catch (error) {
   console.error(error instanceof InvalidScenarioError ? error.message : error);
+  process.exit(2);
+}
+
+// A frozen test scenario is not run once anything frozen has changed.
+const frozenChanges = await verifyFreezeBeforeRun(path, defaultFreezeOptions());
+if (frozenChanges.length > 0) {
+  for (const change of frozenChanges) {
+    console.error(`Changed since the freeze: ${describeFreezeChange(change)}`);
+  }
+  console.error("Refusing to run a frozen test scenario: freeze again (and re-record) first.");
   process.exit(2);
 }
 

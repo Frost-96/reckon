@@ -44,6 +44,11 @@ export function createToolRegistry(businessPackage: BusinessPackage): ToolRegist
   return { definitions, find: (name) => byName.get(name) };
 }
 
+// The tool definitions the model is offered for a business package, in the order it sees them.
+export function modelToolDefinitions(businessPackage: BusinessPackage): ModelToolDefinition[] {
+  return createToolRegistry(businessPackage).definitions;
+}
+
 // What the model must send, so the input side of the schema.
 function parameterSchema(tool: RegisteredTool): Record<string, unknown> {
   const { $schema: _, ...schema } = z.toJSONSchema(tool.parameters, { io: "input" });

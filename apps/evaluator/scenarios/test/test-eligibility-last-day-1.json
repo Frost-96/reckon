@@ -1,0 +1,103 @@
+{
+  "name": "test-eligibility-last-day-1",
+  "description": "符合条件：签收至今离售后期限只剩半天。",
+  "seed": "test-eligibility-last-day-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 800 },
+    "orders": [
+      {
+        "id": "O-45225",
+        "customerId": "C-2009",
+        "status": "delivered",
+        "deliveredDaysAgo": 29.5,
+        "lines": [{ "id": "L1", "productName": "电动牙刷", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-2009",
+    "messages": ["我想退订单 O-45225 里的 1 件电动牙刷，原因是不想要了。"],
+    "answers": {
+      "orderId": "O-45225",
+      "lineId": { "choose": "电动牙刷" },
+      "quantity": "1 件",
+      "reason": "不想要了"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-45225",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "不想要了",
+          "returnFeeCents": 800
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-45225" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-45225" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-45225",
+                  "lineId": "L1",
+                  "quantity": 1,
+                  "reason": "不想要了",
+                  "returnFeeCents": 800
+                },
+                "message": "请确认：退订单 O-45225 的电动牙刷 1 件，原因“不想要了”，退货运费 8.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-45225",
+                "lineId": "L1",
+                "quantity": 1,
+                "reason": "不想要了",
+                "returnFeeCents": 800
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 8.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-45225",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 1,
+        "returnFeeCents": 800,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

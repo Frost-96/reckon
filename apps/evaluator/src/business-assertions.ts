@@ -37,6 +37,7 @@ const checkedFields = ["quantity", "returnFeeCents", "status", "returnShipment"]
 async function checkAftersales(
   db: NodePgDatabase,
   assertion: BusinessAssertion,
+  seededIds: ReadonlySet<string>,
 ): Promise<AssertionResult> {
   const rows = await db
     .select({
@@ -56,10 +57,12 @@ async function checkAftersales(
       ),
     )
     .orderBy(asc(aftersalesOrders.createdAt), asc(aftersalesOrders.id));
-  const found = rows.map(({ returnShipmentId, ...record }) => ({
-    ...record,
-    returnShipment: returnShipmentId !== null,
-  }));
+  const found = rows
+    .filter((record) => assertion.includeSeeded || !seededIds.has(record.id))
+    .map(({ returnShipmentId, ...record }) => ({
+      ...record,
+      returnShipment: returnShipmentId !== null,
+    }));
   const failures: string[] = [];
   if (found.length !== assertion.count) {
     failures.push(`expected ${assertion.count} aftersales orders, found ${found.length}`);
@@ -75,13 +78,15 @@ async function checkAftersales(
   return { assertion, passed: failures.length === 0, failures, found };
 }
 
+// `seededIds`: the aftersales orders the scenario put on file before the run.
 export async function checkBusinessAssertions(
   db: NodePgDatabase,
   assertions: readonly BusinessAssertion[],
+  seededIds: ReadonlySet<string>,
 ): Promise<AssertionResult[]> {
   const results: AssertionResult[] = [];
   for (const assertion of assertions) {
-    results.push(await checkAftersales(db, assertion));
+    results.push(await checkAftersales(db, assertion, seededIds));
   }
   return results;
 }

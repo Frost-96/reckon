@@ -1,0 +1,55 @@
+{
+  "name": "test-eligibility-refunded-2",
+  "description": "不符合条件：订单已经退款，Agent 查订单后说明原因。",
+  "seed": "test-eligibility-refunded-2",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 1500 },
+    "orders": [
+      {
+        "id": "O-31721",
+        "customerId": "C-9128",
+        "status": "refunded",
+        "deliveredDaysAgo": 22,
+        "lines": [{ "id": "L1", "productName": "陶瓷碗", "quantity": 1 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-9128",
+    "messages": ["我想退订单 O-31721 里的 1 件陶瓷碗，原因是尺寸不合适。"],
+    "answers": {
+      "orderId": "O-31721",
+      "lineId": { "choose": "陶瓷碗" },
+      "quantity": "1 件",
+      "reason": "尺寸不合适"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-31721",
+          "lineId": "L1",
+          "quantity": 1,
+          "reason": "尺寸不合适",
+          "returnFeeCents": 1500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-31721" } }]
+        },
+        { "content": "订单 O-31721 已经退款，无法再办理退货。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [{ "kind": "aftersales", "orderId": "O-31721", "lineId": "L1", "count": 0 }]
+  }
+}

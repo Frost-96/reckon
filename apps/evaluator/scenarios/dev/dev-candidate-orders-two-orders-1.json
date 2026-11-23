@@ -1,0 +1,129 @@
+{
+  "name": "dev-candidate-orders-two-orders-1",
+  "description": "多个候选订单：顾客在两笔订单里都买过这件商品。",
+  "seed": "dev-candidate-orders-two-orders-1",
+  "business": {
+    "policy": { "returnWindowDays": 30, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-30117",
+        "customerId": "C-8976",
+        "status": "delivered",
+        "deliveredDaysAgo": 3,
+        "lines": [
+          { "id": "L1", "productName": "帆布包", "quantity": 3 },
+          { "id": "L2", "productName": "加湿器", "quantity": 1 }
+        ]
+      },
+      {
+        "id": "O-16108",
+        "customerId": "C-8976",
+        "status": "delivered",
+        "deliveredDaysAgo": 7,
+        "lines": [{ "id": "L1", "productName": "帆布包", "quantity": 2 }]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-8976",
+    "messages": ["我想退 2 件帆布包，原因是颜色和图片不一样。我买过不止一次，记不清是哪笔订单了。"],
+    "answers": {
+      "orderId": { "choose": "O-16108" },
+      "lineId": { "choose": "帆布包" },
+      "quantity": "2 件",
+      "reason": "颜色和图片不一样"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-16108",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "颜色和图片不一样",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "我先查一下您的订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": {} }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "ask_user",
+              "arguments": {
+                "question": "您有 2 笔订单买过帆布包，请问要退哪一笔？",
+                "slot": "orderId",
+                "options": ["O-30117（帆布包 3 件）", "O-16108（帆布包 2 件）"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-16108" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-16108",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "颜色和图片不一样",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-16108 的帆布包 2 件，原因“颜色和图片不一样”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-16108",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "颜色和图片不一样",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      { "kind": "aftersales", "orderId": "O-30117", "lineId": "L1", "count": 0 },
+      { "kind": "aftersales", "orderId": "O-30117", "lineId": "L2", "count": 0 },
+      {
+        "kind": "aftersales",
+        "orderId": "O-16108",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      }
+    ]
+  }
+}

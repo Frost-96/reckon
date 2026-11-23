@@ -97,6 +97,7 @@ export {
   type TaskState,
   type UserVisibleMessage,
 } from "./tasks.ts";
+export { modelToolDefinitions } from "./tool-registry.ts";
 export {
   createWatchdog,
   type ExpiredLease,

@@ -10,6 +10,7 @@
     "dev": "docker compose --profile dev up --build",
     "experiment": "docker compose --profile experiment up --build --detach --wait",
     "scenario": "node apps/evaluator/src/main.ts",
+    "dataset": "node apps/evaluator/src/dataset-cli.ts",
     "db:up": "docker compose up --detach --wait postgres",
     "db:migrate": "pnpm db:up && pnpm --filter @reckon/business-mock db:migrate && pnpm --filter @reckon/kernel db:migrate",
     "typecheck": "tsc",

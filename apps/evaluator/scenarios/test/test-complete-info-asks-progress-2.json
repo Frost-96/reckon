@@ -1,0 +1,114 @@
+{
+  "name": "test-complete-info-asks-progress-2",
+  "description": "信息完整：提交退货后，顾客在同一个任务里继续问进度。",
+  "seed": "test-complete-info-asks-progress-2",
+  "business": {
+    "policy": { "returnWindowDays": 7, "returnFeeCents": 500 },
+    "orders": [
+      {
+        "id": "O-97742",
+        "customerId": "C-7709",
+        "status": "delivered",
+        "deliveredDaysAgo": 4,
+        "lines": [
+          { "id": "L1", "productName": "毛巾套装", "quantity": 2 },
+          { "id": "L2", "productName": "电水壶", "quantity": 2 }
+        ]
+      }
+    ],
+    "aftersales": []
+  },
+  "simulatedUser": {
+    "customerId": "C-7709",
+    "messages": [
+      "我想退订单 O-97742 里的 2 件毛巾套装，原因是功能不符合预期。",
+      "退货办得怎么样了？"
+    ],
+    "answers": {
+      "orderId": "O-97742",
+      "lineId": { "choose": "毛巾套装" },
+      "quantity": "2 件",
+      "reason": "功能不符合预期"
+    },
+    "confirmations": [
+      {
+        "tool": "submit_return",
+        "parameters": {
+          "orderId": "O-97742",
+          "lineId": "L1",
+          "quantity": 2,
+          "reason": "功能不符合预期",
+          "returnFeeCents": 500
+        }
+      }
+    ]
+  },
+  "model": {
+    "turns": [
+      [
+        {
+          "content": "好的，我先查一下这笔订单。",
+          "toolCalls": [{ "name": "query_order", "arguments": { "orderId": "O-97742" } }]
+        },
+        {
+          "toolCalls": [{ "name": "query_aftersales_rules", "arguments": { "orderId": "O-97742" } }]
+        },
+        {
+          "toolCalls": [
+            {
+              "name": "request_confirmation",
+              "arguments": {
+                "tool": "submit_return",
+                "parameters": {
+                  "orderId": "O-97742",
+                  "lineId": "L1",
+                  "quantity": 2,
+                  "reason": "功能不符合预期",
+                  "returnFeeCents": 500
+                },
+                "message": "请确认：退订单 O-97742 的毛巾套装 2 件，原因“功能不符合预期”，退货运费 5.00 元。"
+              }
+            }
+          ]
+        }
+      ],
+      [
+        {
+          "toolCalls": [
+            {
+              "name": "submit_return",
+              "arguments": {
+                "orderId": "O-97742",
+                "lineId": "L1",
+                "quantity": 2,
+                "reason": "功能不符合预期",
+                "returnFeeCents": 500
+              }
+            }
+          ]
+        },
+        { "content": "已为您提交退货申请，并生成了寄回单。退货运费 5.00 元。" }
+      ],
+      [
+        { "toolCalls": [{ "name": "query_aftersales", "arguments": { "orderId": "O-97742" } }] },
+        { "content": "您的售后单正在处理中，寄回单已生成，请按寄回单把商品寄回。" }
+      ]
+    ]
+  },
+  "expected": {
+    "outcome": "auto_completed",
+    "business": [
+      {
+        "kind": "aftersales",
+        "orderId": "O-97742",
+        "lineId": "L1",
+        "count": 1,
+        "quantity": 2,
+        "returnFeeCents": 500,
+        "status": "in_progress",
+        "returnShipment": true
+      },
+      { "kind": "aftersales", "orderId": "O-97742", "lineId": "L2", "count": 0 }
+    ]
+  }
+}

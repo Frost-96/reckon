@@ -1,108 +1,24 @@
-import type { AddressInfo } from "node:net";
 import { join } from "node:path";
-import { createAftersalesPackage } from "@reckon/aftersales";
-import { buildApp } from "@reckon/api";
-import { type BusinessMockUnderTest, startBusinessMock } from "@reckon/business-mock/test-support";
-import {
-  createExecutor,
-  type Executor,
-  faultPlanOfRun,
-  modelOfRun,
-  recordExecutorStart,
-} from "@reckon/kernel";
-import { type ExecutionTestDatabase, startExecutionTestDatabase } from "@reckon/kernel/testing";
-import { requireEnv } from "@reckon/shared";
-import { grantReadAccess } from "@reckon/shared/testing";
-import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import {
-  type BusinessReader,
-  connectBusinessReader,
+  generateDataset,
   loadScenario,
+  parseScenario,
   runScenario,
   type ScenarioEnvironment,
 } from "./index.ts";
+import { type StackUnderTest, startStackUnderTest } from "./test-support.ts";
 
-// The services of the experiment stack, run in-process on their own databases.
-let mock: BusinessMockUnderTest;
-let database: ExecutionTestDatabase;
-let api: FastifyInstance;
-const executors: Executor[] = [];
-let business: BusinessReader;
+let stack: StackUnderTest;
 let environment: ScenarioEnvironment;
 
-async function listen(app: FastifyInstance): Promise<string> {
-  await app.listen({ host: "127.0.0.1", port: 0 });
-  return `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
-}
-
 beforeAll(async () => {
-  mock = await startBusinessMock();
-  const businessMockUrl = await listen(mock.app);
-  database = await startExecutionTestDatabase();
-  api = buildApp(database.pool, { watchdogScanIntervalMs: 50 });
-  const businessPackage = createAftersalesPackage({ businessServiceUrl: businessMockUrl });
-  await startExecutor("host-1", businessPackage);
-  await startExecutor("host-2", businessPackage);
-  business = connectBusinessReader(
-    await grantReadAccess(mock.databaseUrl, requireEnv("BUSINESS_READER_DATABASE_URL")),
-  );
-  environment = {
-    taskApiUrl: await listen(api),
-    businessMockUrl,
-    executionDb: database.db,
-    business,
-    pollIntervalMs: 20,
-    turnTimeoutMs: 10_000,
-  };
+  stack = await startStackUnderTest();
+  environment = stack.environment;
 });
 
-class Dropped extends Error {}
-
-// An executor instance that follows the fault plan of each run. Where the executor process would
-// kill itself, this instance stops claiming and abandons its turn, leaving its lease to run out;
-// then a new instance starts on the same host, as the container's restart policy would have it.
-async function startExecutor(
-  host: string,
-  businessPackage: ReturnType<typeof createAftersalesPackage>,
-  generation = 1,
-): Promise<void> {
-  const db = database.db;
-  const owner = `${host}-executor-${generation}`;
-  await recordExecutorStart(db, { owner, host });
-  const executor: Executor = createExecutor({
-    db,
-    owner,
-    businessPackage,
-    model: modelOfRun(db),
-    pollIntervalMs: 20,
-    leaseSeconds: 0.5,
-    heartbeatIntervalMs: 100,
-    onFaultPoint: faultPlanOfRun({
-      db,
-      owner,
-      fire() {
-        void executor.stop();
-        void startExecutor(host, businessPackage, generation + 1);
-        throw new Dropped(`${owner} dropped itself`);
-      },
-    }),
-    onError(error) {
-      if (!(error instanceof Dropped)) {
-        console.error(error);
-      }
-    },
-  });
-  executor.start();
-  executors.push(executor);
-}
-
 afterAll(async () => {
-  await Promise.all(executors.map((executor) => executor.stop()));
-  await business.close();
-  await api.close();
-  await database.close();
-  await mock.close();
+  await stack.close();
 });
 
 const returnOneKettle = join(import.meta.dirname, "../scenarios/return-one-kettle.json");
@@ -154,6 +70,24 @@ test("the simulated user refuses to confirm parameters it does not expect, so no
     { passed: false, found: [] },
     { passed: true, found: [] },
   ]);
+});
+
+test("a simulated user choosing among the offered options does not guess when more than one fits", async () => {
+  const [candidates] = generateDataset().dev.filter(
+    ({ template }) => template === "candidate-orders",
+  );
+  const scenario = parseScenario(candidates?.scenario);
+  // The product the customer bought in every candidate order, so every option mentions it.
+  const productName = scenario.business.orders[0]?.lines[0]?.productName ?? "";
+  const ambiguous = {
+    ...scenario.simulatedUser,
+    answers: { ...scenario.simulatedUser.answers, orderId: { choose: productName } },
+  };
+
+  const result = await runScenario({ ...scenario, simulatedUser: ambiguous }, environment);
+
+  expect(result.conversation).toMatchObject({ ended: "question_unanswered", taskState: "CLOSED" });
+  expect(result.assertions.flatMap((assertion) => assertion.found)).toEqual([]);
 });
 
 test("the executor drops itself between the two writes and a peer finishes the return, written exactly once", async () => {
