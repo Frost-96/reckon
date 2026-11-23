@@ -74,6 +74,34 @@ export const tasks = pgTable(
   ],
 );
 
+// Each executor process start. A container restarted after its process died comes back as a new
+// owner on the same host.
+export const executorStarts = pgTable("executor_starts", {
+  owner: text().primaryKey(),
+  host: text().notNull(),
+  startedAt: timestamptz().notNull().defaultNow(),
+});
+
+// A planned fault point that fired. The primary key lets each fire at most once per run.
+export const faultFirings = pgTable(
+  "fault_firings",
+  {
+    runId: uuid()
+      .notNull()
+      .references(() => runs.id),
+    // Its label in the run's fault plan, e.g. after_write_confirmed:create_aftersales.
+    faultPoint: text().notNull(),
+    taskId: uuid()
+      .notNull()
+      .references(() => tasks.id),
+    // The executor instance that dropped itself there.
+    owner: text().notNull(),
+    // By the database clock, committed before the executor dies: where recovery time starts.
+    firedAt: timestamptz().notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.runId, t.faultPoint] })],
+);
+
 // What happened to each lease, stamped by the database clock (ADR 0002) so recovery times can
 // be computed in SQL. At most one event of a kind per lease version.
 export const leaseEvents = pgTable(
